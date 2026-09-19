@@ -453,9 +453,9 @@ export function installExternalApi() {
     const { path, query } = route(original);
     let targetPath = path;
     const requestMethod = (init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
-    // Send the storefront language so Odoo returns translated content
-    // (title/body/cta...). Covers controllers reading either the header or
-    // the `lang` query param.
+    // Send the storefront language as a `lang` query param so Odoo returns
+    // translated content (title/body/cta...). Query-only on purpose: custom
+    // headers would force CORS preflights.
     let appLang = 'ar';
     try {
       const saved = localStorage.getItem('selection_lang');
@@ -515,7 +515,10 @@ export function installExternalApi() {
     const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
     if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
     if (!headers.has('Accept')) headers.set('Accept', 'application/json');
-    if (!headers.has('Accept-Language')) headers.set('Accept-Language', odooLang);
+    // NOTE: do NOT send Accept-Language (or any custom header) here.
+    // Values like ar_001/en_US contain "_" so the header is NOT CORS-
+    // safelisted → forces a preflight that Odoo rejects. The `lang` query
+    // param above already carries the language with zero preflight.
 
     // X-Cart-Token and Idempotency-Key are deliberately forwarded unchanged.
     const requestInit: RequestInit = { ...init, headers };
