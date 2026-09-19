@@ -505,12 +505,12 @@ export function installExternalApi() {
       }
     }
     if (path === '/api/orders' && requestMethod === 'POST') targetPath = '/api/checkout';
-    // In dev, use same-origin so Vite's /api proxy forwards to Odoo (avoids CORS).
-    // In production, call Odoo directly (requires Odoo CORS allow-list for the site domain).
+    // Same-origin always: Vite's dev proxy handles local dev, Vercel rewrites
+    // handle production. The browser therefore only ever shows our own
+    // /api/* paths — the Odoo backend origin never appears in DevTools.
+    // (API_BASE_URL is still used to absolutize Odoo media URLs.)
     const queryString = query.toString() ? `?${query.toString()}` : '';
-    const target = import.meta.env.DEV
-      ? `${targetPath}${queryString}`
-      : `${API_BASE_URL}${targetPath}${queryString}`;
+    const target = `${targetPath}${queryString}`;
     const token = localStorage.getItem('selection_token');
     const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
     if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);

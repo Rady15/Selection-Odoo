@@ -8,6 +8,7 @@
     }
   ],
   "routes": [
+    { "src": "/api/(.*)", "dest": "https://oktech24-coffee-selection-usa-staging-37526933.dev.odoo.com/api/$1" },
     { "src": "/(.*\\..*)", "dest": "/dist/$1" },
     { "src": "/(.*)", "dest": "/dist/index.html" }
   ]
