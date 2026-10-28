@@ -1,5 +1,5 @@
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://oktech24-coffee-selection-usa-staging-37526933.dev.odoo.com').replace(/\/+$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://oktech24-coffee-selection-usa-staging-40504893.dev.odoo.com').replace(/\/+$/, '');
 
 // Odoo serves media as site-relative paths (e.g. /web/image/...) but the SPA
 // runs on another origin, so absolutize them to the API host.
