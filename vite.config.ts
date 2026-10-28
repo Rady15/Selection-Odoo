@@ -5,7 +5,7 @@ import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiTarget = (env.VITE_API_BASE_URL || 'https://oktech24-coffee-selection-usa-staging-37526933.dev.odoo.com').replace(/\/+$/, '');
+  const apiTarget = (env.VITE_API_BASE_URL || 'https://oktech24-coffee-selection-usa-staging-40504893.dev.odoo.com').replace(/\/+$/, '');
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
