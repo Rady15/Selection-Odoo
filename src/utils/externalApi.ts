@@ -600,6 +600,23 @@ export function installExternalApi() {
     }
 
     const response = await nativeFetch(target, requestInit);
-    return transformResponse(response, path, requestMethod);
+    // Keep list consumers stable when the upstream API returns a 404/500 HTML
+    // page or a non-standard error envelope. Writes retain their real response.
+    if (requestMethod === 'GET' && LIST_PATHS.has(path) && !response.ok) {
+      console.error(`API list request failed (${response.status}): ${target}`);
+      return jsonResponse([], 200, new Headers(response.headers));
+    }
+    const transformed = await transformResponse(response, path, requestMethod);
+    if (requestMethod === 'GET' && LIST_PATHS.has(path) && transformed.ok) {
+      try {
+        const payload = await transformed.clone().json();
+        if (Array.isArray(payload)) return transformed;
+        const list = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload?.results) ? payload.results : [];
+        return jsonResponse(list, transformed.status, transformed.headers);
+      } catch {
+        return jsonResponse([], 200, new Headers(transformed.headers));
+      }
+    }
+    return transformed;
   };
 }

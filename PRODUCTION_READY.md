@@ -71,3 +71,16 @@ The uploaded archive contained an incomplete/root-owned `node_modules` tree. The
 
 ## Important
 Rotate any credentials that were present in the original archive before production deployment. Never reuse the old Stripe/database/JWT credentials.
+
+## October 2026 deployment/API hardening
+
+- Replaced the legacy Vercel `routes`/static-build routing configuration with explicit Vercel rewrites. `/api/*` requests are proxied to the configured Odoo staging API and client-side routes fall back to `index.html`.
+- Hardened product/category list loading so error envelopes, missing endpoints, or non-array responses cannot crash React rendering with `.map is not a function`.
+- Added consistent list-response normalization at the fetch boundary. Failed GET list calls return an empty JSON array for rendering safety; inspect the server logs and verify the Odoo API deployment to restore real data.
+- Removed the uploaded `.env` file from the distributable archive. Configure deployment secrets in Vercel Project Settings instead; never commit or distribute secrets.
+
+### Important deployment verification
+
+This repository is a Vite frontend that proxies API requests to the external Odoo host; it does not contain the Odoo server implementation. These changes fix the Vercel routing configuration and prevent the UI crash, but they cannot create missing Odoo endpoints or data. After deployment, verify these URLs against the Odoo host directly: `/api/categories`, `/api/products`, and `/api/homepage`. If the Odoo host itself returns 404, the corresponding routes must be enabled/fixed in the Odoo backend or the `VITE_API_BASE_URL`/Vercel rewrite destination must be updated to the correct API host.
+
+The reported `WaterfoxBlockerChild.sys.mjs` CSP messages appear to originate from the Waterfox browser extension/blocker. Do not weaken the site's Content Security Policy based on those messages alone; retest in a clean browser profile and inspect the page's own response headers first.

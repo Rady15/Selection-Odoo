@@ -1,15 +1,27 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "builds": [
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "source": "/api/:path*",
+      "destination": "https://oktech24-coffee-selection-usa-staging-37526933.dev.odoo.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "https://oktech24-coffee-selection-usa-staging-37526933.dev.odoo.com/api/$1" },
-    { "src": "/(.*\\..*)", "dest": "/dist/$1" },
-    { "src": "/(.*)", "dest": "/dist/index.html" }
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
   ]
 }

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { Product, Category } from '../types';
@@ -57,8 +57,12 @@ export const ProductListingPage: React.FC<ProductListingPageProps> = ({
  fetch('/api/categories').then(res => res.json())
  ])
  .then(([prodsData, catsData]) => {
- setProducts(prodsData);
- setCategories(catsData);
+ // Never trust an API payload to be an array: HTTP errors and Odoo envelopes
+ // can otherwise reach array operations and crash the whole page.
+ const productList = Array.isArray(prodsData) ? prodsData : Array.isArray(prodsData?.data) ? prodsData.data : Array.isArray(prodsData?.items) ? prodsData.items : [];
+ const categoryList = Array.isArray(catsData) ? catsData : Array.isArray(catsData?.data) ? catsData.data : Array.isArray(catsData?.items) ? catsData.items : [];
+ setProducts(productList);
+ setCategories(categoryList);
  setLoading(false);
  })
  .catch(err => {

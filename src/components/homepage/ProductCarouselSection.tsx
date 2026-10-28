@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import { Product } from '../../types';
@@ -56,9 +56,8 @@ export const ProductCarouselSection: React.FC<ProductCarouselSectionProps> = ({
  fetch(url)
  .then(res => res.json())
  .then(data => {
- if (Array.isArray(data)) {
- setProducts(data);
- }
+ const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : Array.isArray(data?.items) ? data.items : [];
+ setProducts(list);
  })
  .catch(err => console.error(err));
  }, [collectionType, categorySlug]);

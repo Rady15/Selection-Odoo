@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import { Category } from '../../types';
@@ -19,7 +19,10 @@ export const FeaturedCategories: React.FC<FeaturedCategoriesProps> = ({ onNaviga
  useEffect(() => {
  fetch('/api/categories')
  .then(res => res.json())
- .then(data => setCategories(data))
+ .then(data => {
+   // API failures may return an error object or HTML instead of a category list.
+   setCategories(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
+ })
  .catch(err => console.error(err));
  }, []);
 
