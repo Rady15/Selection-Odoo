@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://oktech24-coffee-selection-usa-staging-37526933.dev.odoo.com/api/:path*"
+      "destination": "https://oktech24-coffee-selection-usa-staging-40504893.dev.odoo.com/api/:path*"
     },
     {
       "source": "/(.*)",
