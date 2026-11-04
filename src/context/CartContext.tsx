@@ -155,9 +155,6 @@ const showCartMessage = (text: string, type: 'info' | 'error' | 'success' = 'inf
   }
 
   const cappedQty = Math.min(quantity, maxStock);
-  if (cappedQty < quantity) {
-    showCartMessage('تم تحديد الكمية بالكمية المتاحة من المخزون / Quantity capped to available stock', 'info');
-  }
   setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: cappedQty } : i));
   };
 
