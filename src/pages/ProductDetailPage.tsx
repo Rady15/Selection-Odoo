@@ -130,15 +130,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug, onNa
   const isLiked = isInWishlist(product.id);
   const shownReviewCount = reviewSummary ? reviewSummary.count : product.review_count;
   const shownRating = reviewSummary && reviewSummary.count > 0 ? reviewSummary.avg.toFixed(1) : product.rating;
- const weightOpt = product.weight_options?.find(w => w.value === selectedWeight) || product.weight_options?.[0];
- const unitPrice = (product.sale_price ?? product.price) + (weightOpt ? weightOpt.priceModifier : 0);
- const isOutOfStock = product.stock <= 0;
+  const weightOpt = product.weight_options?.find(w => w.value === selectedWeight) || product.weight_options?.[0];
+  const unitPrice = (product.sale_price ?? product.price) + (weightOpt ? weightOpt.priceModifier : 0);
+  const maxStock = product.variants?.find(v => v.weight === selectedWeight && v.grind === selectedGrind)?.stock ?? product.stock;
+  const isOutOfStock = maxStock <= 0;
 
- const handleAddToCart = () => {
- addToCart(product, selectedWeight, selectedGrind, quantity);
- setAddedSuccess(true);
- setTimeout(() => setAddedSuccess(false), 2000);
- };
+  const handleAddToCart = () => {
+  if (isOutOfStock) return;
+  addToCart(product, selectedWeight, selectedGrind, quantity);
+  setAddedSuccess(true);
+  setTimeout(() => setAddedSuccess(false), 2000);
+  };
 
  const handleShare = async (channel?: 'clipboard' | 'whatsapp' | 'telegram' | 'x') => {
  const url = window.location.href;
@@ -473,10 +475,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug, onNa
  <Minus className="w-4 h-4" />
  </button>
  <span className="px-3 text-sm font-bold text-[#1A2E30] min-w-[32px] text-center">{quantity}</span>
- <button
- onClick={() => setQuantity(quantity + 1)}
- className="p-3 hover:text-[#6CC6C9] transition cursor-pointer"
- >
+  <button
+  onClick={() => setQuantity(Math.min(maxStock, quantity + 1))}
+  className="p-3 hover:text-[#6CC6C9] transition cursor-pointer"
+  >
  <Plus className="w-4 h-4" />
  </button>
  </div>

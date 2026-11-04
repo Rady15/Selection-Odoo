@@ -49,9 +49,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
   const shownRating =
     reviewSummary && reviewSummary.count > 0 ? reviewSummary.avg.toFixed(1) : product.rating;
   const hasRatings = shownReviewCount > 0 || Number(shownRating) > 0;
- const currentPrice = product.sale_price ?? product.price;
- const hasDiscount = product.sale_price && product.sale_price < product.price;
- const discountPercent = hasDiscount ? Math.round(((product.price - product.sale_price!) / product.price) * 100) : 0;
+  const currentPrice = product.sale_price ?? product.price;
+  const hasDiscount = product.sale_price && product.sale_price < product.price;
+  const discountPercent = hasDiscount ? Math.round(((product.price - product.sale_price!) / product.price) * 100) : 0;
+  const cardMaxStock = product.variants?.find(v => v.weight === selectedWeight && v.grind === selectedGrind)?.stock ?? product.stock;
+  const isCardOutOfStock = cardMaxStock <= 0;
 
  const handleWishlistClick = (e: React.MouseEvent) => {
  e.stopPropagation();
@@ -65,12 +67,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
  toggleWishlist(product.id);
  };
 
- const handleAddToCart = (e: React.MouseEvent) => {
- e.stopPropagation();
- addToCart(product, selectedWeight, selectedGrind, 1);
- setAddedSuccess(true);
- setTimeout(() => setAddedSuccess(false), 1800);
- };
+  const handleAddToCart = (e: React.MouseEvent) => {
+  e.stopPropagation();
+  if (isCardOutOfStock) return;
+  addToCart(product, selectedWeight, selectedGrind, 1);
+  setAddedSuccess(true);
+  setTimeout(() => setAddedSuccess(false), 1800);
+  };
 
  return (
  <div
@@ -227,12 +230,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
 
  {/* Grind Popover Toggle & Quick Add */}
  <div className="relative">
- <button
- onClick={handleAddToCart}
- className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg cursor-pointer ${addedSuccess
- ? 'bg-emerald-600 text-white'
- : 'bg-[#0E5257] hover:bg-[#2B7D82] text-white shadow-[#0E5257]/30'
- }`}
+  <button
+  onClick={handleAddToCart}
+  disabled={isCardOutOfStock}
+  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg cursor-pointer ${addedSuccess
+  ? 'bg-emerald-600 text-white'
+  : isCardOutOfStock
+  ? 'bg-[#6B8C8E] text-[#4A6869] shadow-none cursor-not-allowed'
+  : 'bg-[#0E5257] hover:bg-[#2B7D82] text-white shadow-[#0E5257]/30'
+  }`}
  >
  {addedSuccess ? (
  <>

@@ -222,23 +222,24 @@ const freeShippingProgressPercent = Math.min(100, Math.round((subtotal / freeShi
  </div>
 
  <div className="flex items-center justify-between mt-2">
- <div className="flex items-center border border-[#E8F2F2] rounded-lg overflow-hidden bg-[#FFFFFF]">
- <button
- onClick={() => updateQuantity(item.id, item.quantity - 1)}
- className="px-2 py-1 text-[#6B8C8E] hover:text-[#6CC6C9] hover:bg-[#E8F2F2] transition cursor-pointer"
- >
- <Minus className="w-3 h-3" />
- </button>
- <span className="px-3 py-1 text-xs font-bold text-[#1A2E30] min-w-[24px] text-center">
- {item.quantity}
- </span>
- <button
- onClick={() => updateQuantity(item.id, item.quantity + 1)}
- className="px-2 py-1 text-[#6B8C8E] hover:text-[#6CC6C9] hover:bg-[#E8F2F2] transition cursor-pointer"
- >
- <Plus className="w-3 h-3" />
- </button>
- </div>
+  <div className="flex items-center border border-[#E8F2F2] rounded-lg overflow-hidden bg-[#FFFFFF]">
+  <button
+  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+  className="px-2 py-1 text-[#6B8C8E] hover:text-[#6CC6C9] hover:bg-[#E8F2F2] transition cursor-pointer"
+  >
+  <Minus className="w-3 h-3" />
+  </button>
+  <span className="px-3 py-1 text-xs font-bold text-[#1A2E30] min-w-[24px] text-center">
+  {item.quantity}
+  </span>
+  <button
+  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+  disabled={item.quantity >= (item.product.variants?.find(v => v.weight === item.selected_weight && v.grind === item.selected_grind)?.stock ?? item.product.stock)}
+  className="px-2 py-1 text-[#6B8C8E] hover:text-[#6CC6C9] hover:bg-[#E8F2F2] transition cursor-pointer"
+  >
+  <Plus className="w-3 h-3" />
+  </button>
+  </div>
  <span className="text-sm font-bold text-[#6CC6C9]">
  {formatPrice(item.unit_price * item.quantity)}
  </span>

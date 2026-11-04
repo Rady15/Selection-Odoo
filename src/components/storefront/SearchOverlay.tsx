@@ -245,18 +245,21 @@ useEffect(() => {
  {formatPrice(prod.sale_price ?? prod.price)}
  </span>
 
-<button
-  onClick={(e) => {
-    e.stopPropagation();
-    const weight = prod.weight_options[0]?.value || '250g';
-    const grind = prod.grind_options[0] || 'beans';
-    addToCart(prod, weight, grind, 1);
-  }}
-  className="p-1.5 rounded-lg bg-[#0E5257] hover:bg-[#2B7D82] text-white transition cursor-pointer"
-  title={t('أضف للسلة', 'Add to Cart')}
-  >
-  <ShoppingBag className="w-3.5 h-3.5" />
-</button>
+ <button
+   onClick={(e) => {
+     e.stopPropagation();
+     const weight = prod.weight_options[0]?.value || '250g';
+     const grind = prod.grind_options[0] || 'beans';
+     const sxMaxStock = prod.variants?.find(v => v.weight === weight && v.grind === grind)?.stock ?? prod.stock;
+     if (sxMaxStock <= 0) return;
+     addToCart(prod, weight, grind, 1);
+   }}
+   disabled={((prod.variants?.find(v => v.weight === (prod.weight_options[0]?.value || '250g') && v.grind === (prod.grind_options[0] || 'beans'))?.stock ?? prod.stock) <= 0)}
+   className="p-1.5 rounded-lg bg-[#0E5257] hover:bg-[#2B7D82] text-white transition cursor-pointer"
+   title={t('أضف للسلة', 'Add to Cart')}
+   >
+   <ShoppingBag className="w-3.5 h-3.5" />
+ </button>
  </div>
  </div>
  </div>

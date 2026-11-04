@@ -68,45 +68,71 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [items]);
 
- const addToCart = (product: Product, selectedWeight: string, selectedGrind: GrindType, quantity = 1) => {
- const weightOpt = product.weight_options?.find(w => w.value === selectedWeight) || product.weight_options?.[0];
- const basePrice = Number(product.sale_price ?? product.price) || 0;
- const modifier = Number(weightOpt?.priceModifier) || 0;
- const unitPrice = basePrice + modifier;
+  const getVariantStock = (product: Product, weight: string, grind: GrindType): number => {
+  const variant = product.variants?.find(v => v.weight === weight && v.grind === grind);
+  return variant != null ? variant.stock : product.stock;
+  };
 
- const itemId = `${product.id}_${selectedWeight}_${selectedGrind}`;
+  const addToCart = (product: Product, selectedWeight: string, selectedGrind: GrindType, quantity = 1) => {
+  const weightOpt = product.weight_options?.find(w => w.value === selectedWeight) || product.weight_options?.[0];
+  const basePrice = Number(product.sale_price ?? product.price) || 0;
+  const modifier = Number(weightOpt?.priceModifier) || 0;
+  const unitPrice = basePrice + modifier;
 
- setItems(prev => {
- const existing = prev.find(i => i.id === itemId);
- if (existing) {
- return prev.map(i => i.id === itemId ? { ...i, quantity: i.quantity + quantity } : i);
- } else {
- return [...prev, {
- id: itemId,
- product_id: product.id,
- product,
- selected_weight: selectedWeight,
- selected_grind: selectedGrind,
- quantity,
- unit_price: unitPrice
- }];
- }
- });
+  const itemId = `${product.id}_${selectedWeight}_${selectedGrind}`;
 
- setIsCartOpen(true);
- };
+  // Block add-to-cart when product/variant is out of stock
+  const maxStock = getVariantStock(product, selectedWeight, selectedGrind);
+  if (maxStock <= 0) return;
 
- const removeFromCart = (id: string) => {
- setItems(prev => prev.filter(i => i.id !== id));
- };
+  // Cap quantity at available stock
+  const cappedQty = Math.min(Math.max(1, quantity), maxStock);
 
- const updateQuantity = (id: string, quantity: number) => {
- if (quantity <= 0) {
- removeFromCart(id);
- return;
- }
- setItems(prev => prev.map(i => i.id === id ? { ...i, quantity } : i));
- };
+  setItems(prev => {
+  const existing = prev.find(i => i.id === itemId);
+  if (existing) {
+  const newQty = Math.min(existing.quantity + cappedQty, maxStock);
+  if (newQty <= existing.quantity) return prev;
+  return prev.map(i => i.id === itemId ? { ...i, quantity: newQty } : i);
+  } else {
+  return [...prev, {
+  id: itemId,
+  product_id: product.id,
+  product,
+  selected_weight: selectedWeight,
+  selected_grind: selectedGrind,
+  quantity: cappedQty,
+  unit_price: unitPrice
+  }];
+  }
+  });
+
+  setIsCartOpen(true);
+  };
+
+  const removeFromCart = (id: string) => {
+  setItems(prev => prev.filter(i => i.id !== id));
+  };
+
+  const updateQuantity = (id: string, quantity: number) => {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+
+  if (quantity <= 0) {
+  removeFromCart(id);
+  return;
+  }
+
+  const maxStock = getVariantStock(item.product, item.selected_weight, item.selected_grind);
+  // Remove item if its variant went out of stock
+  if (maxStock <= 0) {
+  removeFromCart(id);
+  return;
+  }
+
+  const cappedQty = Math.min(quantity, maxStock);
+  setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: cappedQty } : i));
+  };
 
  const clearCart = () => {
  setItems([]);

@@ -173,23 +173,24 @@ export const CartPage: React.FC<CartPageProps> = ({ onNavigate }) => {
  </div>
  </div>
 
- {/* Quantity & Total Price Actions */}
- <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-[#E8F2F2]">
- <div className="flex items-center border border-[#E8F2F2] rounded-xl bg-[#FFFFFF]">
- <button
- onClick={() => updateQuantity(item.id, item.quantity - 1)}
- className="p-2 hover:text-[#6CC6C9] transition cursor-pointer"
- >
- <Minus className="w-3.5 h-3.5" />
- </button>
- <span className="px-3 text-xs font-bold text-[#1A2E30]">{item.quantity}</span>
- <button
- onClick={() => updateQuantity(item.id, item.quantity + 1)}
- className="p-2 hover:text-[#6CC6C9] transition cursor-pointer"
- >
- <Plus className="w-3.5 h-3.5" />
- </button>
- </div>
+  {/* Quantity & Total Price Actions */}
+  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-0 border-[#E8F2F2]">
+  <div className="flex items-center border border-[#E8F2F2] rounded-xl bg-[#FFFFFF]">
+  <button
+  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+  className="p-2 hover:text-[#6CC6C9] transition cursor-pointer"
+  >
+  <Minus className="w-3.5 h-3.5" />
+  </button>
+  <span className="px-3 text-xs font-bold text-[#1A2E30]">{item.quantity}</span>
+  <button
+  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+  disabled={item.quantity >= (item.product.variants?.find(v => v.weight === item.selected_weight && v.grind === item.selected_grind)?.stock ?? item.product.stock)}
+  className="p-2 hover:text-[#6CC6C9] transition cursor-pointer"
+  >
+  <Plus className="w-3.5 h-3.5" />
+  </button>
+  </div>
 
  <span className="font-extrabold text-base text-[#6CC6C9]">
  {formatPrice(item.unit_price * item.quantity)}

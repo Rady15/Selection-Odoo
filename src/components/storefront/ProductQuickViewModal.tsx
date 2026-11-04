@@ -36,17 +36,20 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({ pr
 
  if (!product) return null;
 
- const weightOpt = product.weight_options?.find(w => w.value === selectedWeight) || product.weight_options?.[0];
- const unitPrice = (product.sale_price ?? product.price) + (weightOpt ? weightOpt.priceModifier : 0);
+  const weightOpt = product.weight_options?.find(w => w.value === selectedWeight) || product.weight_options?.[0];
+  const unitPrice = (product.sale_price ?? product.price) + (weightOpt ? weightOpt.priceModifier : 0);
+  const qvMaxStock = product.variants?.find(v => v.weight === selectedWeight && v.grind === selectedGrind)?.stock ?? product.stock;
+  const isQvOutOfStock = qvMaxStock <= 0;
 
- const handleAddToCart = () => {
- addToCart(product, selectedWeight, selectedGrind, quantity);
- setAddedSuccess(true);
- setTimeout(() => {
- setAddedSuccess(false);
- onClose();
- }, 1200);
- };
+  const handleAddToCart = () => {
+  if (isQvOutOfStock) return;
+  addToCart(product, selectedWeight, selectedGrind, quantity);
+  setAddedSuccess(true);
+  setTimeout(() => {
+  setAddedSuccess(false);
+  onClose();
+  }, 1200);
+  };
 
  return (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -204,21 +207,24 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({ pr
  <Minus className="w-4 h-4" />
  </button>
  <span className="px-3 text-sm font-bold text-[#1A2E30]">{quantity}</span>
- <button
- onClick={() => setQuantity(quantity + 1)}
- className="p-2 hover:text-[#6CC6C9] transition cursor-pointer"
- >
+  <button
+  onClick={() => setQuantity(Math.min(qvMaxStock, quantity + 1))}
+  className="p-2 hover:text-[#6CC6C9] transition cursor-pointer"
+  >
  <Plus className="w-4 h-4" />
  </button>
  </div>
 
  {/* Add Button */}
- <button
- onClick={handleAddToCart}
- className={`flex-1 py-3 rounded-xl text-xs font-bold transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${addedSuccess
- ? 'bg-emerald-600 text-white'
- : 'bg-[#0E5257] hover:bg-[#2B7D82] text-white shadow-[#0E5257]/30'
- }`}
+  <button
+  onClick={handleAddToCart}
+  disabled={isQvOutOfStock}
+  className={`flex-1 py-3 rounded-xl text-xs font-bold transition shadow-lg flex items-center justify-center gap-2 cursor-pointer ${addedSuccess
+  ? 'bg-emerald-600 text-white'
+  : isQvOutOfStock
+  ? 'bg-[#6B8C8E] text-[#4A6869] shadow-none cursor-not-allowed'
+  : 'bg-[#0E5257] hover:bg-[#2B7D82] text-white shadow-[#0E5257]/30'
+  }`}
  >
  {addedSuccess ? (
  <>
