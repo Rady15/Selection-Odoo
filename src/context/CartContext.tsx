@@ -96,28 +96,29 @@ const showCartMessage = (text: string, type: 'info' | 'error' | 'success' = 'inf
   }
 
   const existing = items.find(i => i.id === itemId);
+  const currentQty = existing ? existing.quantity : 0;
   const requestedQty = Math.max(1, quantity);
-  const finalQty = existing ? Math.min(existing.quantity + requestedQty, maxStock) : Math.min(requestedQty, maxStock);
+  const spaceAvailable = maxStock - currentQty;
+  const actualAddQty = Math.min(requestedQty, spaceAvailable);
 
-  // Notify when requested quantity exceeds available stock
-  if (existing && finalQty <= existing.quantity) {
+  // Already at stock limit — nothing can be added
+  if (actualAddQty <= 0) {
     showCartMessage('وصلت إلى الحد الأقصى المتاح من المخزون لهذا المنتج / You reached the max available stock', 'info');
     setIsCartOpen(true);
     return;
   }
-  if (existing && existing.quantity + requestedQty > maxStock) {
+
+  // Requested more than what is available
+  if (requestedQty > spaceAvailable) {
     showCartMessage('تم تحديد الكمية بالكمية المتاحة من المخزون / Quantity capped to available stock', 'info');
   }
-  if (!existing && requestedQty > maxStock) {
-    showCartMessage('الكمية المتاحة فقط / Only ' + maxStock + ' available', 'info');
-  }
+
+  const finalQty = currentQty + actualAddQty;
 
   setItems(prev => {
     const curr = prev.find(i => i.id === itemId);
     if (curr) {
-      const newQty = Math.min(curr.quantity + requestedQty, maxStock);
-      if (newQty <= curr.quantity) return prev;
-      return prev.map(i => i.id === itemId ? { ...i, quantity: newQty } : i);
+      return prev.map(i => i.id === itemId ? { ...i, quantity: finalQty } : i);
     } else {
       return [...prev, {
         id: itemId,
