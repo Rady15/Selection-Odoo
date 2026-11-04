@@ -66,21 +66,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onNavigat
  setError('');
  setSubmitting(true);
 
- if (mode === 'login') {
- if (!email || !password) {
- setError(t('يرجى ملء جميع الحقول', 'Please fill in all fields'));
- setSubmitting(false);
- return;
- }
- const result = await login(email, password);
- if (result.success) {
- finishAuth();
- } else {
- setError(result.error || t('خطأ في تسجيل الدخول', 'Login failed'));
- }
-  } else {
-  if (!name || !email || !phone || !password) {
+  if (mode === 'login') {
+  if (!email || !password) {
   setError(t('يرجى ملء جميع الحقول', 'Please fill in all fields'));
+  setSubmitting(false);
+  return;
+  }
+  const result = await login(email, password);
+  if (result.success) {
+  finishAuth();
+  } else {
+  setError(result.error || t('خطأ في تسجيل الدخول', 'Login failed'));
+  }
+  } else {
+  if (!name || (!email && !phone) || !password) {
+  setError(t('يرجى ملء الاسم وكلمة المرور والبريد الإلكتروني أو الجوال', 'Please fill name, password, and email or phone'));
   setSubmitting(false);
   return;
   }
@@ -159,16 +159,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onNavigat
  )}
 
   <div>
-  <label className="block text-[#4A6869] mb-1 font-semibold">{mode === 'login' ? t('البريد الإلكتروني أو اسم المستخدم', 'Email or username') : t('البريد الإلكتروني', 'Email')}</label>
+  <label className="block text-[#4A6869] mb-1 font-semibold">{t('البريد الإلكتروني أو الجوال', 'Email or phone')}</label>
   <div className="relative">
   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B8C8E]" />
   <input
   type={mode === 'login' ? 'text' : 'email'}
   autoComplete="username"
-  required
+  required={mode === 'login'}
   value={email}
   onChange={e => setEmail(e.target.value)}
-  placeholder={mode === 'login' ? 'name@example.com / username' : 'name@example.com'}
+  placeholder={mode === 'login' ? 'name@example.com / +966 5X XXX XXXX' : 'name@example.com / +966 5X XXX XXXX'}
   className="w-full focus:outline-none focus:border-[#6CC6C9] transition"
   />
   </div>

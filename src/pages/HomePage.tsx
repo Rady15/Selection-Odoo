@@ -16,77 +16,13 @@ interface HomePageProps {
  onNavigate: (path: string) => void;
 }
 
-const DEFAULT_SECTIONS: HomepageSection[] = [
- {
- id: 'sec-hero',
- type: 'hero_slider',
- is_enabled: true,
- sort_order: 1,
- config: {
- slides: [
- {
- id: 'slide-1',
- title_ar: 'محاصيل إثيوبية وكولومبية نادرة بدرجات تقييم 85+ SCA',
- title_en: 'Rare 85+ SCA Micro-lots Sourced From Ethiopia & Colombia',
- subtitle_ar: 'محمصة حديثاً بعناية فائقة لتجربة إشراق فاكهي واستخلاص متوازن',
- subtitle_en: 'Freshly roasted micro-lots crafted for pure flavor clarity and rich crema',
- badge_ar: 'محاصيل الموسم الجديد',
- badge_en: 'New Harvest Crop',
- image_desktop: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1920&q=80',
- image_mobile: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=800&q=80',
- cta_text_ar: 'تسوق المحاصيل النادرة',
- cta_text_en: 'Explore Specialty Beans',
- cta_link: '/products?category=single-origin'
- }
- ]
- }
- },
- {
- id: 'sec-benefits', type: 'benefits', is_enabled: true, sort_order: 2, config: {
- items: [
- { icon: 'Coffee', title_ar: 'قهوة مختصة 100%', title_en: '100% Specialty Coffee', desc_ar: 'محاصيل سينجل أوريجين فاخرة من أفضل المزارع العالمية', desc_en: 'Premium single-origin crops from world-class farms' },
- { icon: 'Truck', title_ar: 'شحن سريع لباب بيتك', title_en: 'Fast Home Delivery', desc_ar: 'توصيل سريع واحترافي داخل المملكة العربية السعودية', desc_en: 'Fast professional delivery across Saudi Arabia' },
- { icon: 'ShieldCheck', title_ar: 'جودة مضمونة 100%', title_en: '100% Quality Guaranteed', desc_ar: 'نضمن جودة وطزاجة كل كيس قهوة نرسله لعملائنا', desc_en: 'We guarantee freshness and quality in every bag' },
- { icon: 'RotateCcw', title_ar: 'استرجاع سهل وسريع', title_en: 'Easy Returns', desc_ar: 'سياسة استرجاع مرنة خلال 7 أيام من تاريخ الشراء', desc_en: 'Flexible 7-day return policy from purchase date' }
- ]
- }
- },
- { id: 'sec-categories', type: 'featured_categories', title_ar: 'تصفح حسب الفئات والأقسام', title_en: 'Shop by Category', is_enabled: true, sort_order: 3, config: {} },
- { id: 'sec-bestsellers', type: 'product_carousel', title_ar: 'الأكثر مبيعاً ورغبةً لدى العملاء', title_en: 'Bestseller Micro-Lots & Gear', subtitle_ar: 'المحاصيل والأدوات المفضلة لمجتمع عشاق القهوة', subtitle_en: 'Top rated beans and barista equipment', is_enabled: true, sort_order: 4, config: { collection: 'bestseller' } },
- { id: 'sec-quiz', type: 'coffee_quiz', title_ar: 'محتار في اختيار محصولك المناسب؟', title_en: 'Not sure which crop fits your taste?', is_enabled: true, sort_order: 5, config: {} },
- {
- id: 'sec-values', type: 'values_carousel', is_enabled: true, sort_order: 6, config: {
- items: [
- { icon: 'Leaf', title_ar: 'مصداقية و تجارة عادل', title_en: 'Direct Trade', desc_ar: 'نعمل مباشرة مع المزارع بدون وسطاء لضمان عوائد عادلة', desc_en: 'Working directly with farms ensuring fair farmer income' },
- { icon: 'Flame', title_ar: 'تحميص طازج أسبوعياً', title_en: 'Fresh Weekly Roast', desc_ar: 'نحمص المحاصيل كل أسبوع لضمان أقصى طزاجة', desc_en: 'We roast fresh every week for maximum freshness' },
- { icon: 'Award', title_ar: 'جودة SCA معتمدة', title_en: 'SCA Certified Quality', desc_ar: 'نختار كل محصول بأعلى معايير جودة السبيشياليتي', desc_en: 'Every crop scored above 84 points by SCA standards' },
- { icon: 'Coffee', title_ar: 'تحميص يدوي بعناية', title_en: 'Artisan Hand Roasted', desc_ar: 'كل دفعة محمصة يدوياً بخبرة وعناية فائقة', desc_en: 'Every batch artisan roasted with extreme care' },
- { icon: 'Heart', title_ar: 'مجتمع القهوة', title_en: 'Coffee Community', desc_ar: 'نبني مجتمع عشاق القهوة المختصة في المملكة', desc_en: "Building Saudi Arabia's specialty coffee community" },
- { icon: 'Recycle', title_ar: 'استدامة بيئية', title_en: 'Eco-Sustainable', desc_ar: 'تغليف صديق للبيئة وممارسات مستدامة في كل مرحلة', desc_en: 'Eco-friendly packaging and sustainable practices' }
- ]
- }
- },
- { id: 'sec-new', type: 'product_carousel', title_ar: 'أحدث المحاصيل والمنتجات', title_en: 'New Arrivals & Fresh Crops', subtitle_ar: 'وصل حديثاً محاصيل فاخرة محمصة أسبوعياً', subtitle_en: 'Freshly roasted weekly micro-lots', is_enabled: true, sort_order: 7, config: { collection: 'new' } },
- { id: 'sec-story', type: 'roastery_story', is_enabled: true, sort_order: 8, config: {} },
- {
- id: 'sec-testimonials', type: 'testimonials', is_enabled: true, sort_order: 9, config: {
- items: [
- { name_ar: 'سعود الحربي', name_en: 'Saud Al-Harbi', role_ar: 'باريستا ومحب قهوة', role_en: 'Barista & Coffee Enthusiast', rating: 5, comment_ar: 'أفضل قهوة مختصة جربتها في السعودية. محصول إثيوبيا شلشلي كان خرافي مع تحضير V60.', comment_en: "Best specialty coffee I've tried in Saudi Arabia. The Ethiopia Chelchele was incredible with V60." },
- { name_ar: 'نورة القحطاني', name_en: 'Noura Al-Qahtani', role_ar: 'باريستا منزلي', role_en: 'Home Barista', rating: 5, comment_ar: 'بوكس الاكتشاف كان هدية مثالية. كل محصول كان أجمل من الثاني. التغليف فخم جداً.', comment_en: 'The Discovery Box was a perfect gift. Every crop was better than the last. Premium packaging too.' },
- { name_ar: 'فهد العتيبي', name_en: 'Fahd Al-Otaibi', role_ar: 'محمم قهوة', role_en: 'Coffee Roaster', rating: 5, comment_ar: 'جودة التحميص ممتازة. استخدمت الإسبرسو بلند他们在拿铁 وطلع كريمي وغني.', comment_en: "Excellent roast quality. I use their espresso blend for lattes and it's rich and creamy." }
- ]
- }
- },
- { id: 'sec-newsletter', type: 'newsletter', is_enabled: true, sort_order: 10, config: {} }
-];
-
 const KNOWN_SECTION_TYPES = new Set([
   'hero_slider', 'featured_categories', 'product_carousel', 'values_carousel',
   'coffee_quiz', 'roastery_story', 'banner', 'benefits', 'testimonials', 'newsletter',
 ]);
 
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
-  const [sections, setSections] = useState<HomepageSection[]>(DEFAULT_SECTIONS);
+  const [sections, setSections] = useState<HomepageSection[]>([]);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   useEffect(() => {

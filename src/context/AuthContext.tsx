@@ -75,37 +75,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (identifier: string, pass: string) => {
   try {
   const id = identifier.trim();
-  // Accept email OR username: Odoo authenticates on `login`, so send the
-  // identifier under every common key and let the backend pick it up.
+  // Accept email, username OR mobile phone: send the identifier under every
+  // common key and let the backend pick it up (email optional for mobile login).
   const res = await fetch('/api/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ login: id, email: id, username: id, password: pass })
+  body: JSON.stringify({ login: id, email: id, username: id, mobile: id, phone: id, password: pass })
   });
- const data = await res.json();
- if (!res.ok) return { success: false, error: data.error_ar || data.error };
- completeAuth(data);
- return { success: true };
- } catch {
- return { success: false, error: 'حدث خطأ بالاتصال بالنظام' };
- }
- };
+  const data = await res.json();
+  if (!res.ok) return { success: false, error: data.error_ar || data.error };
+  completeAuth(data);
+  return { success: true };
+  } catch {
+  return { success: false, error: 'حدث خطأ بالاتصال بالنظام' };
+  }
+  };
 
- const register = async (name: string, email: string, phone: string, pass: string) => {
- try {
- const res = await fetch('/api/auth/register', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ name, email, phone, password: pass })
- });
- const data = await res.json();
- if (!res.ok) return { success: false, error: data.error_ar || data.error };
- completeAuth(data);
- return { success: true };
- } catch {
- return { success: false, error: 'حدث خطأ عند تسجيل الحساب' };
- }
- };
+  const register = async (name: string, email: string, phone: string, pass: string) => {
+  try {
+  const res = await fetch('/api/auth/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name, email: email || null, phone: phone || null, mobile: phone || null, password: pass })
+  });
+  const data = await res.json();
+  if (!res.ok) return { success: false, error: data.error_ar || data.error };
+  completeAuth(data);
+  return { success: true };
+  } catch {
+  return { success: false, error: 'حدث خطأ عند تسجيل الحساب' };
+  }
+  };
 
  const googleLogin = useCallback(async (credential: string) => {
  try {
