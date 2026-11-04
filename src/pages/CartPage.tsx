@@ -27,10 +27,11 @@ export const CartPage: React.FC<CartPageProps> = ({ onNavigate }) => {
  const { formatPrice } = useCurrency();
  const { user } = useAuth();
  const { openAuth } = useUI();
- const {
- items,
- updateQuantity,
- removeFromCart,
+  const {
+  items,
+  cartMessage,
+  updateQuantity,
+  removeFromCart,
  subtotal,
  discountAmount,
  appliedCoupon,
@@ -77,16 +78,23 @@ export const CartPage: React.FC<CartPageProps> = ({ onNavigate }) => {
  </div>
  </div>
 
- <button
- onClick={() => onNavigate('/products')}
- className="text-xs font-bold text-[#6CC6C9] hover:underline cursor-pointer flex items-center gap-1"
- >
- <span>{t('متابعة التسوق', 'Continue Shopping')}</span>
- {language === 'ar' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
- </button>
- </div>
+  <button
+  onClick={() => onNavigate('/products')}
+  className="text-xs font-bold text-[#6CC6C9] hover:underline cursor-pointer flex items-center gap-1"
+  >
+  <span>{t('متابعة التسوق', 'Continue Shopping')}</span>
+  {language === 'ar' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+  </button>
+  </div>
 
- {items.length === 0 ? (
+  {/* Cart Message (stock notifications) */}
+  {cartMessage && (
+  <div className={`p-3 mb-2 rounded-xl text-xs font-bold text-center border ${cartMessage.type === 'error' ? 'bg-red-50/60 border-red-200 text-red-700' : cartMessage.type === 'success' ? 'bg-emerald-50/60 border-emerald-200 text-emerald-700' : 'bg-[#E8F2F2] border-[#E8F2F2] text-[#0E5257]'`}>
+  {cartMessage.text}
+  </div>
+  )}
+
+  {items.length === 0 ? (
  <div className="text-center py-20 bg-[#F0FAFA] border border-[#E8F2F2] rounded-3xl p-8 space-y-4">
  <ShoppingBag className="w-16 h-16 text-[#6B8C8E] mx-auto" />
  <h3 className="font-extrabold text-xl text-[#1A2E30]">

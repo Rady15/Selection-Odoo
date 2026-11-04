@@ -28,10 +28,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onNavigate }) => {
  const { formatPrice } = useCurrency();
  const { user } = useAuth();
  const { openAuth } = useUI();
- const {
- items,
- updateQuantity,
- removeFromCart,
+  const {
+  items,
+  cartMessage,
+  updateQuantity,
+  removeFromCart,
  isCartOpen,
  closeCart,
  subtotal,
@@ -125,7 +126,14 @@ const freeShippingProgressPercent = Math.min(100, Math.round((subtotal / freeShi
  </button>
  </div>
 
- {/* Free Shipping Goal Bar */}
+  {/* Cart Message (stock notifications) */}
+  {cartMessage && (
+  <div className={`p-3 mb-2 rounded-xl text-xs font-bold text-center border ${cartMessage.type === 'error' ? 'bg-red-50/60 border-red-200 text-red-700' : cartMessage.type === 'success' ? 'bg-emerald-50/60 border-emerald-200 text-emerald-700' : 'bg-[#E8F2F2] border-[#E8F2F2] text-[#0E5257]'`}>
+  {cartMessage.text}
+  </div>
+  )}
+
+  {/* Free Shipping Goal Bar */}
  <div className={`p-4 border-b border-[#E8F2F2] ${isFreeShippingEligible ? 'bg-emerald-500/10' : 'bg-[#0E5257]/20'}`}>
  <div className={`flex items-center gap-2.5 rounded-2xl border px-3.5 py-3 mb-3 ${isFreeShippingEligible ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-[#6CC6C9]/40 bg-[#F0FAFA]/80'}`}>
  <Truck className={`w-6 h-6 shrink-0 ${isFreeShippingEligible ? 'text-emerald-400' : 'text-[#6CC6C9]'} animate-pulse`} />

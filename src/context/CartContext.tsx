@@ -3,6 +3,7 @@ import { CartItem, Product, GrindType, Coupon } from '../types';
 
 interface CartContextType {
   items: CartItem[];
+  cartMessage: { text: string; type: 'info' | 'error' | 'success' } | null;
   addToCart: (product: Product, selectedWeight: string, selectedGrind: GrindType, quantity?: number) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -48,11 +49,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
  }
  });
 
- const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
- const [discountAmount, setDiscountAmount] = useState<number>(0);
- const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState<number>(0);
- const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
- const [storeSettings, setStoreSettings] = useState<any>(null);
+const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+const [discountAmount, setDiscountAmount] = useState<number>(0);
+const [loyaltyPointsToRedeem, setLoyaltyPointsToRedeem] = useState<number>(0);
+const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+const [cartMessage, setCartMessage] = useState<{ text: string; type: 'info' | 'error' | 'success' } | null>(null);
+const [storeSettings, setStoreSettings] = useState<any>(null);
 
  useEffect(() => { fetch('/api/public/settings').then(r => r.ok ? r.json() : null).then(setStoreSettings).catch(() => {}); }, []);
 
@@ -73,6 +75,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return variant != null ? variant.stock : product.stock;
   };
 
+const showCartMessage = (text: string, type: 'info' | 'error' | 'success' = 'info') => {
+  setCartMessage({ text, type });
+  setTimeout(() => setCartMessage(null), 4000);
+};
+
   const addToCart = (product: Product, selectedWeight: string, selectedGrind: GrindType, quantity = 1) => {
   const weightOpt = product.weight_options?.find(w => w.value === selectedWeight) || product.weight_options?.[0];
   const basePrice = Number(product.sale_price ?? product.price) || 0;
@@ -83,28 +90,45 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Block add-to-cart when product/variant is out of stock
   const maxStock = getVariantStock(product, selectedWeight, selectedGrind);
-  if (maxStock <= 0) return;
+  if (maxStock <= 0) {
+    showCartMessage('هذا المنتج غير متوفر حالياً / This product is currently out of stock', 'error');
+    return;
+  }
 
-  // Cap quantity at available stock
-  const cappedQty = Math.min(Math.max(1, quantity), maxStock);
+  const existing = items.find(i => i.id === itemId);
+  const requestedQty = Math.max(1, quantity);
+  const finalQty = existing ? Math.min(existing.quantity + requestedQty, maxStock) : Math.min(requestedQty, maxStock);
+
+  // Notify when requested quantity exceeds available stock
+  if (existing && finalQty <= existing.quantity) {
+    showCartMessage('وصلت إلى الحد الأقصى المتاح من المخزون لهذا المنتج / You reached the max available stock', 'info');
+    setIsCartOpen(true);
+    return;
+  }
+  if (existing && existing.quantity + requestedQty > maxStock) {
+    showCartMessage('تم تحديد الكمية بالكمية المتاحة من المخزون / Quantity capped to available stock', 'info');
+  }
+  if (!existing && requestedQty > maxStock) {
+    showCartMessage('الكمية المتاحة فقط / Only ' + maxStock + ' available', 'info');
+  }
 
   setItems(prev => {
-  const existing = prev.find(i => i.id === itemId);
-  if (existing) {
-  const newQty = Math.min(existing.quantity + cappedQty, maxStock);
-  if (newQty <= existing.quantity) return prev;
-  return prev.map(i => i.id === itemId ? { ...i, quantity: newQty } : i);
-  } else {
-  return [...prev, {
-  id: itemId,
-  product_id: product.id,
-  product,
-  selected_weight: selectedWeight,
-  selected_grind: selectedGrind,
-  quantity: cappedQty,
-  unit_price: unitPrice
-  }];
-  }
+    const curr = prev.find(i => i.id === itemId);
+    if (curr) {
+      const newQty = Math.min(curr.quantity + requestedQty, maxStock);
+      if (newQty <= curr.quantity) return prev;
+      return prev.map(i => i.id === itemId ? { ...i, quantity: newQty } : i);
+    } else {
+      return [...prev, {
+        id: itemId,
+        product_id: product.id,
+        product,
+        selected_weight: selectedWeight,
+        selected_grind: selectedGrind,
+        quantity: finalQty,
+        unit_price: unitPrice
+      }];
+    }
   });
 
   setIsCartOpen(true);
@@ -131,6 +155,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const cappedQty = Math.min(quantity, maxStock);
+  if (cappedQty < quantity) {
+    showCartMessage('تم تحديد الكمية بالكمية المتاحة من المخزون / Quantity capped to available stock', 'info');
+  }
   setItems(prev => prev.map(i => i.id === id ? { ...i, quantity: cappedQty } : i));
   };
 
@@ -185,6 +212,7 @@ const totalItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   return (
   <CartContext.Provider value={{
   items,
+  cartMessage,
   addToCart,
   removeFromCart,
   updateQuantity,
