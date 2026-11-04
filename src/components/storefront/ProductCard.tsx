@@ -37,7 +37,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
  const [showGrindPopover, setShowGrindPopover] = useState(false);
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const primaryImage = product.images?.[0] || '';
+  const primaryImage = product.images?.[0] || '/brand-mark.png';
 
   useEffect(() => {
     setImgLoaded(false);
@@ -77,6 +77,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
 
  return (
  <div
+ data-testid="product-card"
+ data-product-slug={product.slug}
  onClick={() => onNavigate(`/products/${product.slug}`)}
  className="group relative bg-[#F0FAFA] border border-[#E8F2F2] hover:border-[#6CC6C9]/60 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-1 transition duration-500 flex flex-col cursor-pointer brand-glow"
  >
@@ -92,6 +94,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
   <img
   src={primaryImage}
   alt={product.name_ar}
+  loading="lazy"
+  decoding="async"
   onLoad={() => setImgLoaded(true)}
   onError={() => setImgLoaded(true)}
   className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-500 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
@@ -102,6 +106,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
  <img
  src={product.images[1]}
  alt={product.name_ar}
+ loading="lazy"
+ decoding="async"
  className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
  />
  )}
@@ -169,8 +175,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onNavigate, o
  </span>
  </div>
 
- {/* Title */}
- <h3 className="font-bold text-sm sm:text-base text-[#1A2E30] group-hover:text-[#6CC6C9] transition line-clamp-1">
+ {/* Title — dir="auto" keeps Latin product names ("12 OZ Paper cups") in
+     reading order inside the RTL layout instead of reversing the number. */}
+ <h3 dir="auto" className="font-bold text-sm sm:text-base text-[#1A2E30] group-hover:text-[#6CC6C9] transition line-clamp-1">
  {language === 'ar' ? product.name_ar : product.name_en}
  </h3>
 

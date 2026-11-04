@@ -8,3 +8,19 @@ public/uploads/
 *.local
 .DS_Store
 data-store.json
+tests/.catalogPolicy.cjs
+tests/.catalogApi.cjs
+tests/.pipeline-entry.ts
+tests/*.png
+tests/report.json
+# product image import: source photos and generated reports stay local
+product-images/
+image-import-report.json
+.image-cache/
+.qa/
+# category seeding review output
+catalog-classification.csv
+# local agent state
+.workbuddy-ai/
+# ad-hoc helper that carries hard-coded staging credentials
+seed-data.sh

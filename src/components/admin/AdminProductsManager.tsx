@@ -5,6 +5,7 @@ import { Product, Category, ProductUnitType, ProductWeightOption, CoffeeRoastLev
 import { Plus, Trash2, Edit, Search, X, Image as ImageIcon, Package, Save, Loader2 } from 'lucide-react';
 import ImageGalleryUploader from './ImageGalleryUploader';
 import { BulkDeleteBar, BulkDeleteConfirm, bulkDeleteRequest } from './BulkDeleteBar';
+import { fetchAllProducts } from '../../utils/catalogApi';
 
 const UNIT_OPTIONS: {value:ProductUnitType; ar:string; en:string; suffix:string}[] = [
  {value:'weight',ar:'وزن',en:'Weight',suffix:'g'}, {value:'piece',ar:'حبة',en:'Piece',suffix:'piece'}, {value:'unit',ar:'قطعة / وحدة',en:'Unit',suffix:'unit'}, {value:'box',ar:'بوكس / صندوق',en:'Box',suffix:'box'}, {value:'liter',ar:'لتر',en:'Liter',suffix:'L'}, {value:'meter',ar:'متر',en:'Meter',suffix:'m'}, {value:'custom',ar:'وحدة مخصصة',en:'Custom',suffix:'unit'}
@@ -91,12 +92,15 @@ export const AdminProductsManager: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [pRes, cRes] = await Promise.all([
-        fetch('/api/products'),
+      // Admin surface: keep Odoo system products visible for diagnosis.
+      // Public catalog calls omit this flag and are filtered.
+      // Paged: the endpoint caps at 100/page, so a single call would only
+      // ever show the first 24 products in the manager.
+      const [p, cRes] = await Promise.all([
+        fetchAllProducts({ include_internal: '1' }),
         fetch('/api/categories')
       ]);
-      if (pRes.ok && cRes.ok) {
-        const p = await pRes.json();
+      if (cRes.ok) {
         const c = await cRes.json();
         setProducts(Array.isArray(p) ? p : []);
         setCategories(Array.isArray(c) ? c : []);
@@ -269,6 +273,34 @@ export const AdminProductsManager: React.FC = () => {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error_ar || errJson.error || 'Save failed');
       }
+
+      // Images picked while creating a new product are held as data URLs (the
+      // product had no id yet). Now that it exists, push them to Odoo — the
+      // REST addon has no image field, so this goes through /api/product-image.
+      const saved = await res.json().catch(() => null);
+      const savedId = editing?.id || saved?.data?.id || saved?.id;
+      const pending = (form.images || []).filter((v: string) => v.startsWith('data:'));
+      if (savedId && pending.length) {
+        const failures: string[] = [];
+        for (const dataUrl of pending) {
+          const up = await fetch('/api/product-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_id: savedId, data_base64: dataUrl }),
+          }).catch(() => null);
+          if (!up || !up.ok) failures.push(`HTTP ${up?.status ?? 'network'}`);
+        }
+        if (failures.length) {
+          setSaving(false);
+          setError(t(
+            `تم حفظ المنتج لكن فشل رفع ${failures.length} صورة (${failures[0]})`,
+            `Product saved, but ${failures.length} image(s) failed to upload (${failures[0]})`,
+          ));
+          await load();
+          return;
+        }
+      }
+
       setShow(false);
       await load();
     } catch (err: any) {
@@ -414,7 +446,7 @@ export const AdminProductsManager: React.FC = () => {
                     </td>
                     <td className="p-4 flex items-center gap-3">
                       <div className="relative">
-                        <img src={p.images?.[0] || '/placeholder.png'} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                        <img src={p.images?.[0] || '/brand-mark.png'} className="w-12 h-12 rounded-xl object-cover" alt="" />
                         <span className="absolute -bottom-1 -right-1 bg-white border border-[#E8F2F2] rounded-full p-1">
                           <ImageIcon className="w-3 h-3 text-[#0E5257]" />
                         </span>
@@ -524,7 +556,7 @@ export const AdminProductsManager: React.FC = () => {
                 <label className="text-xs font-semibold">{t('عدد التقييمات', 'Review Count')}<input type="number" min="0" value={form.review_count ?? 0} onChange={e => update('review_count', Number(e.target.value))} className="w-full mt-1 p-2 border rounded-xl" /></label>
               </div>
 
-              <ImageGalleryUploader values={form.images} onChange={v => update('images', v)} label={t('صور المنتج', 'Product Gallery')} min={1} />
+              <ImageGalleryUploader values={form.images} onChange={v => update('images', v)} label={t('صور المنتج', 'Product Gallery')} min={1} productId={editing?.id} />
 
               {/* Selling Unit & Weight Options */}
               <div className="rounded-2xl border border-[#E8F2F2] p-4 space-y-4">

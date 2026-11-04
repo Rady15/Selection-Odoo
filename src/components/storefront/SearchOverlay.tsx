@@ -59,14 +59,16 @@ useEffect(() => {
  return;
  }
 
- setLoading(true);
- const timer = setTimeout(() => {
- fetch(`/api/products?search=${encodeURIComponent(query.trim())}`)
- .then(res => res.json())
- .then(data => {
- setResults(Array.isArray(data) ? data : []);
- setLoading(false);
- })
+    setLoading(true);
+    const timer = setTimeout(() => {
+      // `q` is the backend's canonical search parameter (the API wrapper also
+      // aliases `search` onto it). Cap the result count: this is a typeahead.
+      fetch(`/api/products?q=${encodeURIComponent(query.trim())}&limit=20`)
+        .then(res => res.json())
+        .then(data => {
+          setResults(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
+          setLoading(false);
+        })
  .catch(err => {
  console.error(err);
  setLoading(false);
@@ -220,8 +222,10 @@ useEffect(() => {
  >
  <div className="w-20 h-20 rounded-xl overflow-hidden bg-[#FFFFFF] relative flex-shrink-0">
  <img
- src={prod.images[0]}
+ src={prod.images[0] || '/brand-mark.png'}
  alt={prod.name_ar}
+ loading="lazy"
+ decoding="async"
  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
  />
  </div>

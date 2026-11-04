@@ -76,6 +76,7 @@ export const ProductQuickViewModal: React.FC<ProductQuickViewModalProps> = ({ pr
  <img
  src={product.images[activeImageIdx] || product.images[0]}
  alt={product.name_ar}
+ decoding="async"
  className="w-full h-full object-cover"
  />
  </div>

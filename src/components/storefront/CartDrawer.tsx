@@ -198,8 +198,10 @@ const freeShippingProgressPercent = Math.min(100, Math.round((subtotal / freeShi
  {/* Image */}
  <div className="w-16 h-16 rounded-xl overflow-hidden bg-[#FFFFFF] flex-shrink-0">
  <img
- src={item.product.images[0]}
+ src={item.product.images[0] || '/brand-mark.png'}
  alt={item.product.name_ar}
+ loading="lazy"
+ decoding="async"
  className="w-full h-full object-cover"
  />
  </div>

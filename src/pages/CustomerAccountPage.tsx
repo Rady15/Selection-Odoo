@@ -4,6 +4,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import { usePolling } from '../hooks/usePolling';
+import { fetchAllProducts } from '../utils/catalogApi';
 import { Order, Product, Address, Review, OrderItem } from '../types';
 import ProductGrid from '../components/storefront/ProductGrid';
 import LoginGate from '../components/storefront/LoginGate';
@@ -114,8 +115,9 @@ export const CustomerAccountPage: React.FC<CustomerAccountPageProps> = ({ onNavi
 
  useEffect(() => {
  if (wishlistIds.length > 0) {
- fetch('/api/products')
- .then(res => res.json())
+ // Wishlist items can be anywhere in a ~475-product catalogue; a single
+ // unpaginated call only ever returned the first 24.
+ fetchAllProducts()
  .then(prods => setWishlistProducts(prods.filter((p: Product) => wishlistIds.includes(p.id))))
  .catch(err => console.error(err));
  } else {

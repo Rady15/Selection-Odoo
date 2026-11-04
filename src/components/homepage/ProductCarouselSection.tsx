@@ -40,17 +40,21 @@ export const ProductCarouselSection: React.FC<ProductCarouselSectionProps> = ({
  const params: string[] = [];
 
  if (categorySlug) {
- params.push(`category=${categorySlug}`);
+ params.push(`category=${encodeURIComponent(categorySlug)}`);
  } else if (collectionType === 'new') {
- params.push('is_new=true');
+ // The backend flag filter is `flag` — `is_new=true` is ignored and
+ // returns the whole catalogue, so every carousel showed the same items.
+ params.push('flag=new');
  } else if (collectionType === 'bestseller') {
- params.push('is_bestseller=true');
+ params.push('flag=bestseller');
  } else if (collectionType === 'featured') {
- params.push('is_featured=true');
+ params.push('flag=featured');
  }
 
  if (params.length > 0) {
- url += '?' + params.join('&');
+ url += '?' + params.join('&') + '&limit=12';
+ } else {
+ url += '?limit=12';
  }
 
  fetch(url)

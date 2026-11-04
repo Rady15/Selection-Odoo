@@ -1,4 +1,6 @@
 
+import { filterPublicProducts, isInternalProduct } from './catalogPolicy';
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://oktech24-coffee-selection-usa-staging-40504893.dev.odoo.com').replace(/\/+$/, '');
 
 // Odoo serves media as site-relative paths (e.g. /web/image/...) but the SPA
@@ -255,7 +257,7 @@ const LIST_PATHS = new Set([
   '/api/admin/coupons'
 ]);
 
-async function transformResponse(response: Response, path: string, method: string): Promise<Response> {
+async function transformResponse(response: Response, path: string, method: string, includeInternal = false): Promise<Response> {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) return response;
   const clone = response.clone();
@@ -428,7 +430,30 @@ async function transformResponse(response: Response, path: string, method: strin
       // except orders, whose envelope is handled by its own branch below.
       if (path !== '/api/orders') return jsonResponse([], response.status, response.headers);
     }
-    if (path === '/api/products') return jsonResponse(Array.isArray(data) ? data.map(normalizeProduct) : normalizeProduct(data), response.status, response.headers);
+    if (path === '/api/products') {
+      // Odoo system products (POS tips, down payment, discount/reward lines,
+      // gift cards, eWallet top-ups) must never reach the storefront. Filtering
+      // here covers the listing, search, every filter and the displayed count in
+      // one place. `include_internal=1` opts out for the admin manager.
+      const list = Array.isArray(data) ? data : (data ? [data] : []);
+      const visible = includeInternal ? list : filterPublicProducts(list);
+      if (!Array.isArray(data)) {
+        const single = visible[0];
+        if (!single && data) return jsonResponse({ error: 'not_found' }, 404, response.headers);
+        return jsonResponse(normalizeProduct(single), response.status, response.headers);
+      }
+      const arr = visible.map(normalizeProduct);
+      // Pagination has to survive the envelope unwrap, and it cannot ride on
+      // the array (JSON.stringify drops non-index properties). It goes out as
+      // response headers instead — the array stays a plain array.
+      const h = new Headers(response.headers);
+      if (body.meta && typeof body.meta === 'object') {
+        if (body.meta.pages != null) h.set('x-catalog-pages', String(body.meta.pages));
+        if (body.meta.total != null) h.set('x-catalog-total', String(body.meta.total));
+        if (body.meta.page != null) h.set('x-catalog-page', String(body.meta.page));
+      }
+      return jsonResponse(arr, response.status, h);
+    }
     if (path === '/api/categories') {
       if (!Array.isArray(data)) return jsonResponse(method === 'GET' ? [] : normalizeCategory(data), response.status, response.headers);
       // Odoo nests sub-categories under `children` — flatten so the catalog
@@ -489,7 +514,13 @@ async function transformResponse(response: Response, path: string, method: strin
   }
 
   // Public detail endpoints are consumed as objects by the existing UI.
-  if (/^\/api\/products\/[^/]+$/.test(path) && data) return jsonResponse(normalizeProduct(data), response.status, response.headers);
+  if (/^\/api\/products\/[^/]+$/.test(path) && data) {
+    // An internal record must not be reachable by direct link either.
+    if (!includeInternal && isInternalProduct(data)) {
+      return jsonResponse({ error: 'not_found' }, 404, response.headers);
+    }
+    return jsonResponse(normalizeProduct(data), response.status, response.headers);
+  }
   if (/^\/api\/orders\/[^/]+$/.test(path) && data) {
     const src: any = data?.order || data;
     const o = normalizeOrder(src);
@@ -523,6 +554,10 @@ export function installExternalApi() {
     } catch { /* storage unavailable — default Arabic */ }
     const odooLang = appLang === 'ar' ? 'ar_001' : 'en_US';
     if (!query.has('lang')) query.set('lang', odooLang);
+    // Frontend-only flag: lets the admin manager see internal Odoo system
+    // products. Stripped before forwarding so Odoo never receives it.
+    const includeInternal = query.get('include_internal') === '1';
+    if (includeInternal) query.delete('include_internal');
     // These content endpoints are not implemented by the Odoo staging backend
     // (404). Serve local stubs so the storefront renders without network spam.
     // Remove once the backend provides them.
@@ -666,7 +701,7 @@ export function installExternalApi() {
       console.error(`API list request failed (${response.status}): ${target}`);
       return jsonResponse([], 200, new Headers(response.headers));
     }
-    const transformed = await transformResponse(response, path, requestMethod);
+    const transformed = await transformResponse(response, path, requestMethod, includeInternal);
     if (requestMethod === 'GET' && LIST_PATHS.has(path) && transformed.ok) {
       try {
         const payload = await transformed.clone().json();

@@ -85,13 +85,17 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({ slug, onNa
  // Fetch category slug from categories list, then fetch related products
  fetch('/api/categories')
  .then(r => r.json())
- .then((cats: any[]) => {
- const cat = cats.find((c: any) => c.id === data.category_id);
- const slug = cat?.slug || data.category_slug;
+ .then((cats: any) => {
+ const list: any[] = Array.isArray(cats) ? cats : Array.isArray(cats?.data) ? cats.data : [];
+ const publicId = data.categories?.[0]?.id || data.category_id;
+ const cat = list.find((c: any) => c.id === publicId || c.slug === data.categories?.[0]?.slug);
+ // The filter parameter is `category` — `category_slug` is ignored and
+ // returns the whole catalogue, so "related" was effectively random.
+ const slug = cat?.slug || data.categories?.[0]?.slug || data.category_slug;
  if (slug) {
- return fetch(`/api/products?category_slug=${slug}`);
+ return fetch(`/api/products?category=${encodeURIComponent(slug)}&limit=12`);
  }
- return fetch('/api/products');
+ return fetch('/api/products?limit=12');
  })
   .then(r => r.json())
   .then(list => setRelatedProducts((Array.isArray(list) ? list : []).filter((p: Product) => p.id !== data.id).slice(0, 4)));
