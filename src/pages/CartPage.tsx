@@ -88,11 +88,7 @@ export const CartPage: React.FC<CartPageProps> = ({ onNavigate }) => {
   </div>
 
   {/* Cart Message (stock notifications) */}
-  {cartMessage && (
-  <div className={`p-3 mb-2 rounded-xl text-xs font-bold text-center border ${cartMessage.type === 'error' ? 'bg-red-50/60 border-red-200 text-red-700' : cartMessage.type === 'success' ? 'bg-emerald-50/60 border-emerald-200 text-emerald-700' : 'bg-[#E8F2F2] border-[#E8F2F2] text-[#0E5257]'`}>
-  {cartMessage.text}
-  </div>
-  )}
+  {cartMessage && <div className={`p-3 mb-2 rounded-xl text-xs font-bold text-center border ${cartMessage.type === 'error' ? 'border-red-200 text-red-700 bg-red-50/60' : cartMessage.type === 'success' ? 'border-emerald-200 text-emerald-700 bg-emerald-50/60' : 'border-[#E8F2F2] text-[#0E5257] bg-[#E8F2F2]'}`}>{cartMessage.text}</div>}
 
   {items.length === 0 ? (
  <div className="text-center py-20 bg-[#F0FAFA] border border-[#E8F2F2] rounded-3xl p-8 space-y-4">
@@ -193,7 +189,7 @@ export const CartPage: React.FC<CartPageProps> = ({ onNavigate }) => {
   <span className="px-3 text-xs font-bold text-[#1A2E30]">{item.quantity}</span>
   <button
   onClick={() => updateQuantity(item.id, item.quantity + 1)}
-  disabled={item.quantity >= (item.product.variants?.find(v => v.weight === item.selected_weight && v.grind === item.selected_grind)?.stock ?? item.product.stock)}
+  disabled={item.quantity >= (item.product.variants?.find((v: any) => v.weight === item.selected_weight && v.grind === item.selected_grind)?.stock ?? item.product.stock)}
   className="p-2 hover:text-[#6CC6C9] transition cursor-pointer"
   >
   <Plus className="w-3.5 h-3.5" />

@@ -127,11 +127,7 @@ const freeShippingProgressPercent = Math.min(100, Math.round((subtotal / freeShi
  </div>
 
   {/* Cart Message (stock notifications) */}
-  {cartMessage && (
-  <div className={`p-3 mb-2 rounded-xl text-xs font-bold text-center border ${cartMessage.type === 'error' ? 'bg-red-50/60 border-red-200 text-red-700' : cartMessage.type === 'success' ? 'bg-emerald-50/60 border-emerald-200 text-emerald-700' : 'bg-[#E8F2F2] border-[#E8F2F2] text-[#0E5257]'`}>
-  {cartMessage.text}
-  </div>
-  )}
+  {cartMessage && <div className={`p-3 mb-2 rounded-xl text-xs font-bold text-center border ${cartMessage.type === 'error' ? 'border-red-200 text-red-700 bg-red-50/60' : cartMessage.type === 'success' ? 'border-emerald-200 text-emerald-700 bg-emerald-50/60' : 'border-[#E8F2F2] text-[#0E5257] bg-[#E8F2F2]'}`}>{cartMessage.text}</div>}
 
   {/* Free Shipping Goal Bar */}
  <div className={`p-4 border-b border-[#E8F2F2] ${isFreeShippingEligible ? 'bg-emerald-500/10' : 'bg-[#0E5257]/20'}`}>
