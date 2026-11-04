@@ -71,12 +71,27 @@ export const ProductListingPage: React.FC<ProductListingPageProps> = ({
  });
  }, []);
 
- // Filter & Sort Logic
- const filteredProducts = useMemo(() => {
- let result = [...products];
+  // Filter & Sort Logic
+  const filteredProducts = useMemo(() => {
+  let result = [...products];
 
- // Category Filter
- if (selectedCategory) {
+  // Exclude system/adjustment products (Down Payment, Discount, Gift Card, eWallet, Top-up, etc.)
+  const SYSTEM_KEYWORDS = [
+  'down payment', 'dow payment', 'pos', 'discount', 'gift card', 'giftcard',
+  'ewallet', 'e-wallet', 'top-up', 'topup', 'wallet top', 'شحن رصيد', 'بطاقة هدايا',
+  'خصم', 'دفع مقدّم', 'محفظة إلكترونية'
+  ];
+  result = result.filter(p => {
+  const name = `${p.name_ar || ''} ${p.name_en || ''}`.toLowerCase();
+  const isSystemName = SYSTEM_KEYWORDS.some(kw => name.includes(kw));
+  const isSystemSku = p.sku === false || p.sku === null || p.sku === '';
+  const isSystemPrice = Number(p.price ?? 0) < 1 && Number(p.sale_price ?? 0) < 1;
+  // Exclude if it matches system keywords AND has no real SKU OR has system price
+  return !(isSystemName && (isSystemSku || isSystemPrice));
+  });
+
+  // Category Filter
+  if (selectedCategory) {
  result = result.filter(p => p.category_slug === selectedCategory);
  }
 
@@ -161,30 +176,51 @@ const hasActiveFilters =
  ? categories.find(c => c.slug === selectedCategory)?.[language === 'ar' ? 'name_ar' : 'name_en'] || t('معرض المحاصيل', 'Crop Catalog')
  : t('جميع المحاصيل والمنتجات', 'All Specialty Crops & Gear')}
  </h1>
- <p className="text-xs sm:text-sm text-[#6B8C8E] mt-1">
- {t('استكشف أجود محاصيل القهوة المختصة وأدوات التحضير الاحترافية', 'Explore 85+ score specialty coffee micro-lots and brewing equipment')}
- </p>
- </div>
+  <p className="text-xs sm:text-sm text-[#6B8C8E] mt-1">
+  {t('استكشف أجود محاصيل القهوة المختصة وأدوات التحضير الاحترافية', 'Explore 85+ score specialty coffee micro-lots and brewing equipment')}
+  </p>
+  </div>
+  </div>
 
- {/* Quick Search Input */}
- <div className="relative w-full sm:w-72">
- <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6B8C8E]" />
- <input
- type="text"
- value={searchQuery}
- onChange={e => setSearchQuery(e.target.value)}
- placeholder={t('تصفية بالاسم أو الإيحاء...', 'Search by name or note...')}
- className="w-full placeholder-[#6B8C8E]/50 focus:outline-none focus:border-[#6CC6C9]"
- />
- {searchQuery && (
- <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B8C8E]">
- <X className="w-3.5 h-3.5" />
- </button>
- )}
- </div>
- </div>
+  {/* Quick Search Input */}
+  <div className="relative w-full sm:w-72">
+  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6B8C8E]" />
+  <input
+  type="text"
+  value={searchQuery}
+  onChange={e => setSearchQuery(e.target.value)}
+  placeholder={t('تصفية بالاسم أو الإيحاء...', 'Search by name or note...')}
+  className="w-full placeholder-[#6B8C8E]/50 focus:outline-none focus:border-[#6CC6C9]"
+  />
+  {searchQuery && (
+  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B8C8E]">
+  <X className="w-3.5 h-3.5" />
+  </button>
+  )}
+  </div>
 
- {/* Toolbar: Counter, Sort & Mobile Filter Button */}
+  {/* Horizontal Category Tabs (centered, side by side) */}
+  <div className="mt-4 overflow-x-auto no-scrollbar scroll-snap-x pb-2">
+  <div className="flex gap-2 px-1 min-w-max scroll-snap-start">
+  <button
+  onClick={() => setSelectedCategory('')}
+  className={`px-4 py-2 rounded-xl text-xs font-medium transition cursor-pointer whitespace-nowrap scroll-snap-start ${!selectedCategory ? 'bg-[#0E5257] text-white font-bold shadow-lg shadow-[#0E5257]/40' : 'bg-[#FFFFFF] border border-[#E8F2F2] text-[#4A6869] hover:bg-[#F0FAFA]'}`}
+  >
+  {t('جميع الأقسام', 'All Categories')}
+  </button>
+  {categories.map(cat => (
+  <button
+  key={cat.id}
+  onClick={() => setSelectedCategory(cat.slug)}
+  className={`px-4 py-2 rounded-xl text-xs font-medium transition cursor-pointer whitespace-nowrap scroll-snap-start ${selectedCategory === cat.slug ? 'bg-[#0E5257] text-white font-bold shadow-lg shadow-[#0E5257]/40' : 'bg-[#FFFFFF] border border-[#E8F2F2] text-[#4A6869] hover:bg-[#F0FAFA]'}`}
+  >
+  {language === 'ar' ? cat.name_ar : cat.name_en}
+  </button>
+  ))}
+  </div>
+  </div>
+
+  {/* Toolbar: Counter, Sort & Mobile Filter Button */}
  <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-[#F0FAFA] border border-[#E8F2F2]">
  <span className="text-xs text-[#4A6869]">
  {t('عرض', 'Showing')} <strong className="text-[#6CC6C9] font-bold">{filteredProducts.length}</strong> {t('منتج', 'products')}
