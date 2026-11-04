@@ -1,0 +1,6 @@
+{
+  "name": "Selection Specialty Coffee Roasters",
+  "description": "Arabic-first specialty coffee e-commerce platform with Selection roastery crops, equipment, full store, checkout, and admin management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

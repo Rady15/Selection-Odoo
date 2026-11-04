@@ -1,0 +1,6 @@
+[deploy]
+builder = "dockerfile"
+startCommand = "npm start"
+
+[deploy.environmentVariables]
+NODE_ENV = "production"

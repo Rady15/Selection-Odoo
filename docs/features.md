@@ -1,0 +1,53 @@
+# Features Inventory
+
+## 1. Storefront Features
+- **Arabic-First & Dual Language (AR/EN)**: Native RTL layout, Cairo/Inter typography, dynamic translation dictionary, seamless language switch without losing cart or page state.
+- **Multi-Currency Support**: SAR (Saudi Riyal) primary default, with instant conversion for AED, KWD, QAR, BHD, OMR, USD.
+- **Header Announcement Bar**: Configurable promotional message with live countdown timer, discount highlights, and free shipping progress tracker.
+- **Database-Driven Mega Menu**: Multi-column menu showing Coffee Crops, Equipment, Tasting Boxes, Drip Bags, Accessories with promotional badges and featured category images.
+- **Real-time Search & Autocomplete**: Debounced modal search searching product names in AR & EN, SKU, origin, processing method, and tasting notes with thumbnail previews and quick add actions.
+- **Interactive Coffee Finder Quiz**: 3-step wizard helping customers find their ideal coffee beans based on brew style (Espresso, V60, Milk drinks, Cold brew), flavor profile (Fruity, Floral, Chocolatey, Nutty), and roast level.
+- **Slide-in Cart Drawer**:
+  - Live progress bar towards free shipping (e.g. "Add 35.00 SAR to get FREE shipping!").
+  - Quantity controls, grind size reminder, variant selection preview.
+  - Coupon code application with instant feedback.
+  - Fursan Rewards loyalty points estimator.
+- **Product Card System**:
+  - Dual hover images with smooth zoom.
+  - Tasting note pills (e.g., Bergamot, Jasmine, Blueberry, Cocoa).
+  - Grind quick selector directly from card.
+  - Wishlist toggle animation & quick view modal.
+  - Stock badges (New, Best Seller, Sale, Fresh Roast, Limited Edition).
+- **Product Details Page**:
+  - Interactive Gallery with image zoom & video player.
+  - Flavor radar chart measuring Acidity, Sweetness, Body, and Balance.
+  - Sourcing details card: Country, Region, Altitude (MASL), Process (Natural, Washed, Anaerobic), Variety, Farm/Producer.
+  - Variant Matrix: Grind size (Beans, V60, Espresso, French Press, Aeropress, Cold Brew) and Weight (250g, 500g, 1kg).
+  - Out-of-Stock alert modal capturing user email/phone.
+  - Verified Customer Reviews with star distribution & customer photos.
+  - Coffee Q&A tab with official roaster responses.
+  - Frequently Bought Together & Cross-sell recommendations.
+- **Checkout & Order Processing**:
+  - Guest checkout & Quick login integration.
+  - Saudi City & District auto-complete selector.
+  - Real-time Shipping calculator (SMSA, Aramex, Fastlo, Local Express, Store Pickup).
+  - Payment Gateways: Mada, Apple Pay, Visa/Mastercard, Cash on Delivery.
+  - Automated tax invoice with VAT 15% breakdown and QR code.
+- **Customer Account Portal**:
+  - Order History & Live 5-stage shipment timeline.
+  - Printable VAT Tax Invoices.
+  - Saved Address Book with default address toggle.
+  - Fursan Rewards Loyalty Hub with points history & instant redemption vouchers.
+  - Saved Wishlist & Back-In-Stock subscriptions list.
+
+## 2. Protected Admin Dashboard (`/admin`)
+- **Real-Time Analytics**: Total Revenue, Monthly Orders, Average Order Value, Customer Growth, Top Selling Crops, Stock Alerts.
+- **Full Catalog Management**: CRUD for Products, Categories, Subcategories, Grind Options, Tasting Notes, Multi-image upload, Variants, Prices, SKU, Stock reservation.
+- **Orders & Fulfillment**: Order status pipeline (Pending -> Paid -> Roasting -> Shipped -> Delivered -> Cancelled), Tax Invoice PDF generator, Packing Slip printer, Tracking number assignment, Customer notification trigger.
+- **Customer & Loyalty Manager**: Customer profiles, loyalty balance manual adjustment, order history lookup, blocked list.
+- **Marketing & Promotions**: Coupon code builder (Fixed SAR / Percentage / Free Shipping / Min spend requirement / Usage caps), Announcement Bar manager, Banner manager.
+- **Homepage Builder**: Drag-and-drop section arrangement, hero slider editor, feature collection picker.
+- **Review & Q&A Moderation**: Filter pending reviews, approve/reject, write official staff replies.
+- **Wholesale & Contact Leads**: Form submission tracking, status updates, notes, export.
+- **Store Settings**: Tax settings, Shipping zones & fees, Payment sandbox toggles, Currency exchange rates, Store details.
+- **Export Reports**: One-click CSV export for Sales, Tax reports, Inventory audit, Customer list.
