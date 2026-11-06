@@ -1,174 +1,256 @@
-﻿import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { HeroSlide } from '../../types';
 import { ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
+import { cleanText, cleanUrl } from '../../utils/text';
 
 interface HeroSliderProps {
- slides: HeroSlide[];
- onNavigate: (path: string) => void;
+  slides: HeroSlide[];
+  onNavigate: (path: string) => void;
+  /** From the CMS block configuration. */
+  autoplay?: boolean;
+  interval?: number;
 }
 
-export const HeroSlider: React.FC<HeroSliderProps> = ({ slides, onNavigate }) => {
+/** Crossfade length. Long enough to read as a dissolve, short enough to feel snappy. */
+const FADE_MS = 900;
+/** Slow zoom applied to the active slide only (Ken Burns). */
+const KEN_BURNS_MS = 9000;
+const MIN_INTERVAL = 2500;
+
+const resolveSources = (slide: HeroSlide): string[] => {
+  const chain = [
+    ...(Array.isArray(slide?.sources) ? slide.sources : []),
+    slide?.image_desktop,
+    slide?.fallback_image,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+  return [...new Set(chain)];
+};
+
+export const HeroSlider: React.FC<HeroSliderProps> = ({
+  slides,
+  onNavigate,
+  autoplay = true,
+  interval = 6000,
+}) => {
   const { language } = useLanguage();
-  const [currentIdx, setCurrentIdx] = useState(0);
-  // Fallback stage per slide: 0 = CMS image, 1 = local banner override,
-  // 2 = product photo, 3 = default. Advances when the current source proves
-  // to be a tiny Odoo placeholder (<600px) or fails to load.
-  const [stage, setStage] = useState<Record<string, number>>({});
-  const UNSPLASH_DEFAULT = 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1920&q=80';
+  const [index, setIndex] = useState(0);
+  const [hovered, setHovered] = useState(false);
+  const [tabHidden, setTabHidden] = useState(false);
+  // Per-slide pointer into the fallback chain, advanced when a source 404s or
+  // turns out to be one of Odoo's 256px placeholders.
+  const [sourceIndex, setSourceIndex] = useState<Record<string, number>>({});
+
+  const items = useMemo(() => (Array.isArray(slides) ? slides.filter(Boolean) : []), [slides]);
+  const count = items.length;
+
+  const goTo = useCallback(
+    (next: number) => {
+      if (count === 0) return;
+      setIndex(((next % count) + count) % count);
+    },
+    [count]
+  );
+
+  // A shrinking slide list (CMS edit) must not leave the index out of range.
+  useEffect(() => {
+    if (count > 0 && index > count - 1) setIndex(0);
+  }, [count, index]);
 
   useEffect(() => {
-  if (!slides || slides.length === 0) return;
-  const timer = setInterval(() => {
-  setCurrentIdx(prev => (prev + 1) % slides.length);
-  }, 6000);
-  return () => clearInterval(timer);
-  }, [slides]);
+    const onVisibility = () => setTabHidden(document.visibilityState === 'hidden');
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
-  if (!slides || slides.length === 0) return null;
+  // Autoplay. Paused on hover and while the tab is in the background so the
+  // visitor never returns to a slide they never saw.
+  useEffect(() => {
+    if (!autoplay || count < 2 || hovered || tabHidden) return;
+    const delay = Number.isFinite(Number(interval)) && Number(interval) >= MIN_INTERVAL
+      ? Number(interval)
+      : 6000;
+    const timer = window.setInterval(() => setIndex((prev) => (prev + 1) % count), delay);
+    return () => window.clearInterval(timer);
+  }, [autoplay, count, hovered, tabHidden, interval]);
 
-  const currentSlide = slides[currentIdx] || slides[0];
-  const PLACEHOLDER_LIMIT = 600; // real banners are 1000px+; Odoo's default placeholder is 256px
-  const candidates = [
-    currentSlide.image_desktop,
-    currentSlide.local_image,
-    currentSlide.fallback_image,
-    UNSPLASH_DEFAULT,
-  ].filter(Boolean) as string[];
-  const step = Math.min(stage[currentSlide.id] || 0, candidates.length - 1);
-  const visualSrc = candidates[step] || currentSlide.image_desktop;
-  const advance = () => {
-    if ((stage[currentSlide.id] || 0) < candidates.length - 1) {
-      setStage(prev => ({ ...prev, [currentSlide.id]: (prev[currentSlide.id] || 0) + 1 }));
-    }
-  };
-  const handleNavigate = (url: string) => /^https?:\/\//i.test(url) ? window.open(url, '_blank', 'noopener,noreferrer') : onNavigate(url);
+  const advanceSource = useCallback((slideId: string, max: number) => {
+    setSourceIndex((prev) => {
+      const current = prev[slideId] ?? 0;
+      if (current >= max - 1) return prev;
+      return { ...prev, [slideId]: current + 1 };
+    });
+  }, []);
+
+  if (count === 0) return null;
+
+  const rtl = language === 'ar';
 
   return (
-  <div className="relative w-full min-h-[500px] sm:min-h-[600px] bg-[#FFFFFF] overflow-hidden flex items-center justify-center border-b border-[#E8F2F2]">
+    <section
+      className="relative w-full overflow-hidden bg-[#0B4145] h-[62vh] min-h-[440px] max-h-[760px]"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      aria-roledescription="carousel"
+      aria-label={rtl ? 'أبرز العروض' : 'Featured highlights'}
+      data-testid="hero-slider"
+    >
+      {/* Every slide stays mounted and crossfades on opacity. Previously the
+          slides unmounted/remounted (AnimatePresence mode="wait"), which left
+          a white gap between frames and restarted the image request each
+          time — that is what made the change look like a flash, not a fade. */}
+      {items.map((slide, i) => {
+        const active = i === index;
+        const sources = resolveSources(slide);
+        const src = sources[Math.min(sourceIndex[slide.id] ?? 0, Math.max(sources.length - 1, 0))] || '';
 
-  {/* Background Desktop & Mobile Images with Gradient Overlay */}
-  <AnimatePresence mode="wait">
-  <motion.div
-  key={currentIdx}
-  initial={{ opacity: 0, scale: 1.08 }}
-  animate={{ opacity: 1, scale: 1 }}
-  exit={{ opacity: 0 }}
-  transition={{ duration: 1 }}
-  className="absolute inset-0 z-0"
-  >
-   <picture>
-   <source media="(max-width: 640px)" srcSet={visualSrc} />
-   <img
-   src={visualSrc}
-   alt={currentSlide.title_ar || ''}
-   className="w-full h-full object-cover"
-   onLoad={e => {
-   const el = e.currentTarget;
-   if (el.naturalWidth > 0 && el.naturalWidth < PLACEHOLDER_LIMIT) advance();
-   }}
-   onError={e => {
-   if ((stage[currentSlide.id] || 0) < candidates.length - 1) {
-   advance();
-   } else if (e.currentTarget.src !== UNSPLASH_DEFAULT) {
-   e.currentTarget.src = UNSPLASH_DEFAULT;
-   }
-   }}
-   />
-   </picture>
-  <div className="absolute inset-0 bg-gradient-to-t from-[#000000]/50 via-[#000000]/20 to-transparent" />
-  </motion.div>
-  </AnimatePresence>
+        const badge = cleanText(slide.badge_ar) || cleanText(slide.badge_en);
+        const titleAr = cleanText(slide.title_ar);
+        const titleEn = cleanText(slide.title_en);
+        const title = rtl ? titleAr || titleEn : titleEn || titleAr;
+        const subtitleAr = cleanText(slide.subtitle_ar);
+        const subtitleEn = cleanText(slide.subtitle_en);
+        const subtitle = rtl ? subtitleAr || subtitleEn : subtitleEn || subtitleAr;
+        const ctaText = rtl
+          ? cleanText(slide.cta_text_ar) || cleanText(slide.cta_text_en)
+          : cleanText(slide.cta_text_en) || cleanText(slide.cta_text_ar);
+        const ctaLink = cleanUrl(slide.cta_link) || cleanUrl(slide.link_url);
 
-  {/* Content Area (centered text) */}
-  <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 text-center space-y-4 sm:space-y-5 py-12 sm:py-16">
+        return (
+          <div
+            key={slide.id || i}
+            className="absolute inset-0 transition-opacity ease-in-out"
+            style={{
+              opacity: active ? 1 : 0,
+              transitionDuration: `${FADE_MS}ms`,
+              pointerEvents: active ? 'auto' : 'none',
+              zIndex: active ? 2 : 1,
+            }}
+            aria-hidden={!active}
+            // Hidden slides stay mounted (that is what makes the crossfade
+            // seamless), so they must not be tabbable or announced.
+            inert={!active}
+            data-slide-index={i}
+            data-active={active ? 'true' : 'false'}
+          >
+            {src && (
+              <img
+                src={src}
+                alt={title || ''}
+                className="absolute inset-0 w-full h-full object-cover will-change-transform"
+                style={{
+                  transform: active ? 'scale(1.06)' : 'scale(1)',
+                  transitionProperty: 'transform',
+                  transitionTimingFunction: 'linear',
+                  transitionDuration: `${KEN_BURNS_MS}ms`,
+                }}
+                decoding="async"
+                fetchPriority={i === 0 ? 'high' : 'low'}
+                onLoad={(event) => {
+                  // Odoo's default placeholder is 256px wide; a real banner is
+                  // 1000px+. Anything smaller is not the image we want.
+                  const el = event.currentTarget;
+                  if (el.naturalWidth > 0 && el.naturalWidth < 600) advanceSource(slide.id, sources.length);
+                }}
+                onError={() => advanceSource(slide.id, sources.length)}
+              />
+            )}
 
-  <AnimatePresence mode="wait">
-  <motion.div
-  key={currentIdx}
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  exit={{ opacity: 0, y: -20 }}
-  transition={{ duration: 0.6 }}
-  className="space-y-3 sm:space-y-4"
-  >
-  {/* Badge */}
-  {currentSlide.badge_ar && (
-  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0E5257]/30 border border-[#6CC6C9]/50 text-[#6CC6C9] text-[11px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md">
-  <span>{language === 'ar' ? currentSlide.badge_ar : currentSlide.badge_en}</span>
-  </div>
-  )}
+            {/* Legibility scrim — stronger at the bottom where the CTA sits. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-black/10" />
 
-  {/* Title with Wave Gradient Color Fill Effect */}
-  {currentSlide.title_ar || currentSlide.title_en ? (
-  <h1 className="text-2xl sm:text-5xl lg:text-6xl font-extrabold font-serif leading-tight max-w-4xl mx-auto animate-cup-fill px-2">
-  {language === 'ar' ? currentSlide.title_ar : currentSlide.title_en}
-  </h1>
-  ) : null}
+            {/* Slide copy. Rendered per slide so it crossfades with the image
+                instead of popping in a frame later.
+                Many CMS banners already have the headline baked into the
+                artwork, so a CTA with no headline sits low instead of landing
+                on top of the logo. */}
+            <div
+              className={`absolute inset-0 flex flex-col items-center px-5 sm:px-10 text-center ${
+                title || subtitle ? 'justify-center' : 'justify-end pb-16 sm:pb-20'
+              }`}
+            >
+              <div className="max-w-3xl space-y-3 sm:space-y-5">
+                {badge && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/15 border border-white/30 text-white/90 text-[11px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md">
+                    {badge}
+                  </span>
+                )}
 
-  {/* Subtitle */}
-  {currentSlide.subtitle_ar || currentSlide.subtitle_en ? (
-  <p className="text-xs sm:text-lg text-[#4A6869] max-w-2xl mx-auto leading-relaxed px-2">
-  {language === 'ar' ? currentSlide.subtitle_ar : currentSlide.subtitle_en}
-  </p>
-  ) : null}
-  </motion.div>
-  </AnimatePresence>
+                {title && (
+                  <h1
+                    dir="auto"
+                    className="text-2xl sm:text-4xl lg:text-6xl font-extrabold font-serif leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.55)]"
+                  >
+                    {title}
+                  </h1>
+                )}
 
-  </div>
+                {subtitle && (
+                  <p
+                    dir="auto"
+                    className="text-xs sm:text-base lg:text-lg text-white/85 max-w-2xl mx-auto leading-relaxed drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)]"
+                  >
+                    {subtitle}
+                  </p>
+                )}
+              </div>
 
-  {/* CTA Button — pinned to bottom */}
-  {(currentSlide.cta_text_ar || currentSlide.cta_text_en) && currentSlide.cta_link ? (
-  <div className="absolute bottom-10 sm:bottom-16 left-1/2 -translate-x-1/2 z-20">
-  <button
-  onClick={() => handleNavigate(currentSlide.cta_link)}
-  className="bg-[#0E5257] hover:bg-[#2B7D82] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl text-xs sm:text-base font-bold transition duration-300 shadow-2xl shadow-[#0E5257]/50 cursor-pointer inline-flex items-center gap-2 group transform active:scale-95"
-  >
-  <span>{language === 'ar' ? currentSlide.cta_text_ar : currentSlide.cta_text_en}</span>
-  {language === 'ar' ? (
-  <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-1 transition" />
-  ) : (
-  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition" />
-  )}
-  </button>
-  </div>
-  ) : null}
+              {ctaText && ctaLink && (
+                <button
+                  onClick={() => {
+                    if (/^https?:\/\//i.test(ctaLink)) {
+                      window.open(ctaLink, '_blank', 'noopener,noreferrer');
+                    } else {
+                      onNavigate(ctaLink);
+                    }
+                  }}
+                  className="mt-6 sm:mt-8 inline-flex items-center gap-2 bg-[#0E5257] hover:bg-[#2B7D82] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl text-xs sm:text-base font-bold transition-colors duration-300 shadow-2xl shadow-black/40 cursor-pointer active:scale-95"
+                >
+                  <span dir="auto" className="max-w-[60vw] truncate">{ctaText}</span>
+                  {rtl ? <ArrowLeft className="w-4 h-4 shrink-0" /> : <ArrowRight className="w-4 h-4 shrink-0" />}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
 
-  {/* Slide Navigation Arrows */}
-  {slides.length > 1 && (
-  <>
-  <button
-  onClick={() => setCurrentIdx(prev => (prev === 0 ? slides.length - 1 : prev - 1))}
-  className="absolute top-1/2 left-2 sm:left-4 -translate-y-1/2 p-2 sm:p-2.5 rounded-full border border-[#E8F2F2] transition cursor-pointer z-20 backdrop-blur"
-  aria-label="Previous Slide"
-  >
-  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-  </button>
+      {count > 1 && (
+        <>
+          <button
+            onClick={() => goTo(index - 1)}
+            className="absolute top-1/2 -translate-y-1/2 start-2 sm:start-4 z-10 p-2 sm:p-2.5 rounded-full bg-black/25 hover:bg-black/45 border border-white/25 text-white backdrop-blur transition cursor-pointer"
+            aria-label={rtl ? 'الشريحة السابقة' : 'Previous slide'}
+            data-testid="hero-prev"
+          >
+            {rtl ? <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />}
+          </button>
 
-  <button
-  onClick={() => setCurrentIdx(prev => (prev + 1) % slides.length)}
-  className="absolute top-1/2 right-2 sm:right-4 -translate-y-1/2 p-2 sm:p-2.5 rounded-full border border-[#E8F2F2] transition cursor-pointer z-20 backdrop-blur"
-  aria-label="Next Slide"
-  >
-  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-  </button>
+          <button
+            onClick={() => goTo(index + 1)}
+            className="absolute top-1/2 -translate-y-1/2 end-2 sm:end-4 z-10 p-2 sm:p-2.5 rounded-full bg-black/25 hover:bg-black/45 border border-white/25 text-white backdrop-blur transition cursor-pointer"
+            aria-label={rtl ? 'الشريحة التالية' : 'Next slide'}
+            data-testid="hero-next"
+          >
+            {rtl ? <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" /> : <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />}
+          </button>
 
-  {/* Indicators Dots */}
-  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
-  {slides.map((_, idx) => (
-  <button
-  key={idx}
-  onClick={() => setCurrentIdx(idx)}
-  className={`h-2 rounded-full transition-all cursor-pointer ${currentIdx === idx ? 'w-8 bg-[#6CC6C9]' : 'w-2 bg-[#E8F2F2]'
-  }`}
-  />
-  ))}
-  </div>
-  </>
-  )}
-
-  </div>
+          <div className="absolute bottom-5 sm:bottom-7 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+            {items.map((slide, i) => (
+              <button
+                key={slide.id || i}
+                onClick={() => goTo(i)}
+                aria-label={rtl ? `الشريحة ${i + 1}` : `Slide ${i + 1}`}
+                aria-current={i === index}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  i === index ? 'w-8 bg-[#6CC6C9]' : 'w-2 bg-white/45 hover:bg-white/70'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
   );
 };
 

@@ -1,5 +1,6 @@
 
 import { filterPublicProducts, isInternalProduct } from './catalogPolicy';
+import { cleanText, cleanUrl, stripHtml, toEmbedUrl } from './text';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://oktech24-coffee-selection-usa-staging-40504893.dev.odoo.com').replace(/\/+$/, '');
 
@@ -151,15 +152,30 @@ function normalizeQuestion(q: any): any {
 }
 
 function normalizeCategory(c: any): any {
-  const stripHtml = (s: any) => String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!c || typeof c !== 'object') return c;
+  // `GET /api/categories` now embeds the category's products. Normalising them
+  // here keeps the shape identical to `GET /api/products`, so any consumer can
+  // hand them straight to ProductCard.
+  const products = Array.isArray(c.products) ? c.products.map(normalizeProduct) : [];
+  const ownImage = absUrl(cleanText(c.image || c.image_url));
+  // Every category currently has `image: null`; the first product photo is a
+  // far better cover than one shared stock photo on all eleven cards.
+  const coverImage = ownImage || absUrl(cleanText(products.find((p: any) => p?.image)?.image));
   return {
-    ...c, id:c.id, slug:c.slug,
-    name_ar:c.name_ar || c.ar_name || c.name || c.name_en || '',
-    name_en:c.name_en || c.name || '',
-    description_ar:stripHtml(c.description_ar || c.description || ''),
-    description_en:stripHtml(c.description_en || c.description || ''),
-    image:absUrl(c.image || c.image_url), parent_id:c.parent_id,
-    sort_order:Number(c.sort_order ?? c.sequence ?? 0), featured: c.featured ?? false
+    ...c,
+    id: c.id,
+    slug: c.slug,
+    name_ar: cleanText(c.name_ar) || cleanText(c.ar_name) || cleanText(c.name) || cleanText(c.name_en),
+    name_en: cleanText(c.name_en) || cleanText(c.name),
+    description_ar: stripHtml(c.description_ar || c.description),
+    description_en: stripHtml(c.description_en || c.description),
+    image: ownImage,
+    cover_image: coverImage,
+    products,
+    product_count: products.length,
+    parent_id: c.parent_id,
+    sort_order: Number(c.sort_order ?? c.sequence ?? 0),
+    featured: c.featured ?? false,
   };
 }
 
@@ -257,6 +273,198 @@ const LIST_PATHS = new Set([
   '/api/admin/coupons'
 ]);
 
+/* ------------------------------------------------------------------------ *
+ * Homepage blocks -> HomepageSection[]
+ *
+ * `GET /api/homepage` returns the CMS blocks in editorial order, and every
+ * block carries its own data:
+ *
+ *   0 hero          image + linked product
+ *   1 hero          image
+ *   2 categories    title
+ *   3 products      title + 10 linked products
+ *   4 products      title + 48 linked products
+ *   5 video         video_url
+ *   6 testimonials  title
+ *   7 newsletter
+ *   8 coffee_finder
+ *   9 story
+ *
+ * Two things were wrong before: the `video` block was silently dropped, and
+ * both `products` blocks were rendered by fetching `?flag=new&limit=12` — so
+ * they showed the same twelve items instead of the products the editor
+ * attached to each block. The transform below keeps one section per block, in
+ * payload order, carrying that block's own products / categories / media.
+ * ------------------------------------------------------------------------ */
+
+const HERO_BLOCK_TYPES = new Set(['hero', 'hero_slider', 'slider']);
+
+const BLOCK_TYPE_MAP: Record<string, string> = {
+  hero: 'hero_slider',
+  hero_slider: 'hero_slider',
+  slider: 'hero_slider',
+  categories: 'featured_categories',
+  category: 'featured_categories',
+  products: 'product_carousel',
+  product_carousel: 'product_carousel',
+  coffee_finder: 'coffee_quiz',
+  coffee_quiz: 'coffee_quiz',
+  testimonials: 'testimonials',
+  newsletter: 'newsletter',
+  story: 'roastery_story',
+  roastery_story: 'roastery_story',
+  video: 'video',
+  benefits: 'benefits',
+  values_carousel: 'values_carousel',
+  banner: 'banner',
+};
+
+const HERO_FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1920&q=80';
+
+const blockId = (block: any, fallback: string): string => cleanText(block?.id) || fallback;
+
+const blockObjects = (value: any): any[] =>
+  (Array.isArray(value) ? value : []).filter((item: any) => item && typeof item === 'object');
+
+function buildHeroSlide(block: any, index: number): any {
+  const product = blockObjects(block?.products)[0];
+  const category = blockObjects(block?.categories)[0];
+
+  const title = stripHtml(block?.title);
+  const subtitle = stripHtml(block?.body);
+  const badge = cleanText(category?.name);
+
+  const cmsImage = absUrl(cleanText(block?.image));
+  const productImage = absUrl(cleanText(product?.image));
+  const categoryImage = absUrl(cleanText(category?.image));
+  // Ordered fallback chain — the slider walks it when a source is missing or
+  // is one of Odoo's 256px placeholders.
+  const sources = [cmsImage, productImage, categoryImage, HERO_FALLBACK_IMAGE].filter(
+    (url, i, all) => Boolean(url) && all.indexOf(url) === i
+  );
+
+  // An explicit CMS CTA wins. Otherwise the product/category the editor
+  // attached to the block becomes the call to action: without this both hero
+  // slides render as bare images, because title/body/cta are all empty.
+  let ctaText = cleanText(block?.cta?.label);
+  let ctaLink = cleanUrl(block?.cta?.url);
+  if (!ctaText && !ctaLink) {
+    if (product) {
+      ctaText = cleanText(product.name_en) || cleanText(product.name_ar);
+      ctaLink = `/product/${cleanText(product.slug) || cleanText(product.id)}`;
+    } else if (category) {
+      ctaText = cleanText(category.name_en) || cleanText(category.name_ar);
+      ctaLink = `/products?category=${cleanText(category.slug)}`;
+    }
+  }
+
+  return {
+    id: blockId(block, `slide-${index}`),
+    title_ar: title,
+    title_en: title,
+    subtitle_ar: subtitle,
+    subtitle_en: subtitle,
+    badge_ar: badge,
+    badge_en: badge,
+    cta_text_ar: ctaText,
+    cta_text_en: ctaText,
+    cta_link: ctaLink,
+    link_url: ctaLink,
+    image_desktop: sources[0] || '',
+    image_mobile: sources[0] || '',
+    sources,
+  };
+}
+
+function buildHomepageSections(blocks: any[]): any[] {
+  const sections: any[] = [];
+  const heroSlides: any[] = [];
+  let heroIndex = -1;
+
+  blocks.forEach((block, index) => {
+    if (!block || typeof block !== 'object') return;
+    const rawType = cleanText(block.type).toLowerCase();
+    if (!rawType) return;
+
+    // Consecutive hero blocks are slides of one slider, not separate sections.
+    if (HERO_BLOCK_TYPES.has(rawType)) {
+      if (heroIndex === -1) heroIndex = index;
+      heroSlides.push(buildHeroSlide(block, heroSlides.length));
+      return;
+    }
+
+    const type = BLOCK_TYPE_MAP[rawType];
+    if (!type) return; // genuinely unknown block type — never force it into the hero
+
+    const title = stripHtml(block.title);
+    const subtitle = stripHtml(block.body);
+    const image = absUrl(cleanText(block.image));
+    const ctaLabel = cleanText(block.cta?.label);
+    const ctaLink = cleanUrl(block.cta?.url);
+    const config: Record<string, any> = {};
+
+    if (type === 'product_carousel') {
+      config.products = blockObjects(block.products).map(normalizeProduct);
+      config.collection = cleanText(block.configuration?.collection) || 'new';
+      config.categorySlug = cleanText(block.configuration?.categorySlug);
+      config.badge_ar = title;
+      config.badge_en = title;
+      config.image = image;
+    } else if (type === 'featured_categories') {
+      config.categories = blockObjects(block.categories).map(normalizeCategory);
+      config.image = image;
+    } else if (type === 'roastery_story' || type === 'video') {
+      config.video_url = toEmbedUrl(block.video_url);
+      config.image = image;
+    } else {
+      config.image = image;
+    }
+
+    if (ctaLabel) {
+      config.cta_label = ctaLabel;
+      config.cta_link = ctaLink;
+    }
+
+    sections.push({
+      id: blockId(block, `sec-${type}-${index}`),
+      type,
+      is_enabled: block.is_enabled !== false && block.enabled !== false,
+      // Payload order is the editorial order — keep it, with gaps so a block
+      // can be reordered server-side without renumbering.
+      sort_order: index * 10,
+      title_ar: title,
+      title_en: title,
+      subtitle_ar: subtitle,
+      subtitle_en: subtitle,
+      cta_label: ctaLabel,
+      cta_link: ctaLink,
+      image,
+      config,
+    });
+  });
+
+  if (heroSlides.length > 0) {
+    const cfg = blocks[0]?.configuration || {};
+    const interval = Number(cfg.interval);
+    sections.push({
+      id: 'sec-hero',
+      type: 'hero_slider',
+      is_enabled: true,
+      sort_order: (heroIndex < 0 ? 0 : heroIndex) * 10,
+      title_ar: '',
+      title_en: '',
+      config: {
+        slides: heroSlides,
+        autoplay: cfg.autoplay !== false,
+        interval: Number.isFinite(interval) && interval > 0 ? interval : 6000,
+      },
+    });
+  }
+
+  return sections.sort((a, b) => a.sort_order - b.sort_order);
+}
+
 async function transformResponse(response: Response, path: string, method: string, includeInternal = false): Promise<Response> {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) return response;
@@ -282,112 +490,10 @@ async function transformResponse(response: Response, path: string, method: strin
 
   const data = body.data;
 
-  // Odoo staging returns homepage content blocks ({type:'hero', title, body,
-  // cta, products...}), not HomepageSection[] — normalize to what HomePage
-  // renders. Real HomepageSection payloads (with `config`) pass through.
+  // CMS homepage blocks -> HomepageSection[], in payload order, each with its
+  // own products / categories / media. See buildHomepageSections above.
   if (path === '/api/homepage' && Array.isArray(data)) {
-    const stripHtml = (s: any) => String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    const absUrl = (u: any) => {
-      const s = String(u ?? '');
-      if (!s || /^https?:\/\//i.test(s) || s.startsWith('data:')) return s;
-      if (s.startsWith('/')) return `${API_BASE_URL}${s}`;
-      return s;
-    };
-    const FALLBACK_HERO = 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1920&q=80';
-
-    // Odoo block type -> frontend HomepageSection type (matches HomePage.tsx switch + KNOWN_SECTION_TYPES)
-    const TYPE_MAP: Record<string, string> = {
-      hero: 'hero_slider',
-      categories: 'featured_categories',
-      products: 'product_carousel',
-      coffee_finder: 'coffee_quiz',
-      testimonials: 'testimonials',
-      newsletter: 'newsletter',
-      story: 'roastery_story',
-    };
-    const FRONTEND_TYPES = new Set(Object.values(TYPE_MAP));
-
-    const sections: any[] = [];
-    let sortOrder = 1;
-
-    // Hero blocks -> a single hero_slider section (multiple blocks = multiple slides)
-    const heroBlocks = data.filter((b: any) => b && b.type === 'hero');
-    if (heroBlocks.length > 0) {
-      const slides = heroBlocks.map((b: any, i: number) => {
-        const prod = Array.isArray(b.products) ? b.products[0] : null;
-        const sectionImg = absUrl(b.image || '');
-        const productImg = absUrl(prod?.image || '');
-        const img = sectionImg || productImg || FALLBACK_HERO;
-        const catName = typeof b.categories?.name === 'string' ? b.categories.name : '';
-        return {
-          id: b.id || `slide-${i}`,
-          title_ar: b.title || '', title_en: b.title || '',
-          subtitle_ar: stripHtml(b.body), subtitle_en: stripHtml(b.body),
-          cta_text_ar: b.cta?.label || '', cta_text_en: b.cta?.label || '',
-          cta_link: !b.cta?.url || b.cta.url === '/shop' ? '/products' : b.cta.url,
-          image_desktop: img, image_mobile: img,
-          fallback_image: productImg || FALLBACK_HERO,
-          local_image: `/hero-banners/${b.id || `slide-${i}`}.png`,
-          badge_ar: catName, badge_en: catName,
-        };
-      });
-      sections.push({
-        id: 'sec-hero', type: 'hero_slider', is_enabled: true, sort_order: sortOrder++,
-        config: {
-          slides,
-          autoplay: data[0]?.configuration?.autoplay ?? true,
-          interval: data[0]?.configuration?.interval ?? 5000,
-        },
-      });
-    }
-
-    // Non-hero blocks -> individual sections mapped by type
-    for (const b of data) {
-      if (!b || b.type === 'hero') continue;
-
-      // Pass through real HomepageSection payloads that already carry `config`
-      if (b.config && FRONTEND_TYPES.has(b.type)) {
-        sections.push({
-          id: b.id || `sec-${b.type}-${sortOrder}`,
-          type: b.type,
-          is_enabled: b.is_enabled !== false,
-          sort_order: b.sort_order ?? sortOrder++,
-          title_ar: b.title_ar, title_en: b.title_en,
-          subtitle_ar: b.subtitle_ar, subtitle_en: b.subtitle_en,
-          config: b.config,
-        });
-        continue;
-      }
-
-      const frontendType = TYPE_MAP[b.type];
-      if (!frontendType) continue; // unknown type (e.g. promo, video) — skip, do not force into hero
-
-      const title = b.title || '';
-      const subtitle = stripHtml(b.body);
-      const config: any = {};
-      if (frontendType === 'product_carousel') {
-        config.collection = b.configuration?.collection || 'new';
-        config.categorySlug = b.configuration?.categorySlug;
-        config.badge_ar = title;
-        config.badge_en = title;
-      } else if (frontendType === 'roastery_story') {
-        config.video_url = b.video_url || false;
-      }
-
-      sections.push({
-        id: b.id || `sec-${frontendType}-${sortOrder}`,
-        type: frontendType,
-        is_enabled: b.is_enabled !== false,
-        sort_order: sortOrder++,
-        title_ar: title,
-        title_en: title,
-        subtitle_ar: subtitle,
-        subtitle_en: subtitle,
-        config,
-      });
-    }
-
-    return jsonResponse(sections, response.status, response.headers);
+    return jsonResponse(buildHomepageSections(data), response.status, response.headers);
   }
 
   // Keep the existing frontend contract while the real source of truth is Odoo.

@@ -5,6 +5,7 @@ import { Product } from '../../types';
 import ProductCard from '../storefront/ProductCard';
 import AnimatedTitle from '../common/AnimatedTitle';
 import { ChevronLeft, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
+import { cleanText } from '../../utils/text';
 
 interface ProductCarouselSectionProps {
  title_ar: string;
@@ -13,6 +14,9 @@ interface ProductCarouselSectionProps {
  subtitle_en?: string;
  collectionType: 'new' | 'bestseller' | 'featured' | 'drip' | 'espresso' | 'tools' | string;
  categorySlug?: string;
+ /** Products attached to the CMS block. When present they are the content —
+  *  the section must not fall back to a generic `?flag=new` fetch. */
+ products?: Product[];
  onNavigate: (path: string) => void;
  onQuickView?: (product: Product) => void;
  badge_ar?: string;
@@ -26,16 +30,26 @@ export const ProductCarouselSection: React.FC<ProductCarouselSectionProps> = ({
  subtitle_en,
  collectionType,
  categorySlug,
+ products: blockProducts,
  onNavigate,
  onQuickView,
  badge_ar,
  badge_en
 }) => {
  const { language, t } = useLanguage();
- const [products, setProducts] = useState<Product[]>([]);
+ const [fetched, setFetched] = useState<Product[]>([]);
  const scrollRef = useRef<HTMLDivElement>(null);
 
+ // A block that carries its own products is authoritative — that is what the
+ // editor picked for this slot. Fetching here is only the fallback for blocks
+ // configured by collection/category instead of by hand.
+ const hasBlockProducts = Array.isArray(blockProducts) && blockProducts.length > 0;
+ const products: Product[] = hasBlockProducts ? (blockProducts as Product[]) : fetched;
+
  useEffect(() => {
+ if (hasBlockProducts) return;
+ let cancelled = false;
+
  let url = '/api/products';
  const params: string[] = [];
 
@@ -60,11 +74,14 @@ export const ProductCarouselSection: React.FC<ProductCarouselSectionProps> = ({
  fetch(url)
  .then(res => res.json())
  .then(data => {
+ if (cancelled) return;
  const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : Array.isArray(data?.items) ? data.items : [];
- setProducts(list);
+ setFetched(list);
  })
  .catch(err => console.error(err));
- }, [collectionType, categorySlug]);
+
+ return () => { cancelled = true; };
+ }, [collectionType, categorySlug, hasBlockProducts]);
 
  const handleScroll = (direction: 'left' | 'right') => {
  if (!scrollRef.current) return;
@@ -94,8 +111,8 @@ export const ProductCarouselSection: React.FC<ProductCarouselSectionProps> = ({
  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
  <AnimatedTitle
  title={t(title_ar, title_en)}
- subtitle={subtitle_ar ? t(subtitle_ar, subtitle_en || '') : undefined}
- badge={badge_ar ? t(badge_ar, badge_en || '') : undefined}
+ subtitle={cleanText(subtitle_ar) ? t(cleanText(subtitle_ar), cleanText(subtitle_en)) : undefined}
+ badge={cleanText(badge_ar) ? t(cleanText(badge_ar), cleanText(badge_en)) : undefined}
  />
 
  <motion.div
@@ -125,7 +142,7 @@ export const ProductCarouselSection: React.FC<ProductCarouselSectionProps> = ({
  </div>
 
  <button
- onClick={() => onNavigate(`/products?${categorySlug ? `category=${categorySlug}` : `sort_by=${collectionType}`}`)}
+ onClick={() => onNavigate(categorySlug ? `/products?category=${encodeURIComponent(categorySlug)}` : '/products')}
  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#6CC6C9] hover:text-amber-400 bg-[#F0FAFA] px-3.5 py-2.5 rounded-xl border border-[#E8F2F2] hover:border-[#6CC6C9]/50 transition cursor-pointer"
  >
  <span>{t('عرض الكل', 'View All')}</span>

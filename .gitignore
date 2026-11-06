@@ -11,8 +11,12 @@ data-store.json
 tests/.catalogPolicy.cjs
 tests/.catalogApi.cjs
 tests/.pipeline-entry.ts
+tests/.homepage.cjs
+tests/.homepage-entry.ts
 tests/*.png
 tests/report.json
+# scratch space for one-off inspection scripts
+.tmp/
 # product image import: source photos and generated reports stay local
 product-images/
 image-import-report.json

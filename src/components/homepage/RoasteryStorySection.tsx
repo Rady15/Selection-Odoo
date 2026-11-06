@@ -3,13 +3,17 @@ import { motion } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import AnimatedTitle from '../common/AnimatedTitle';
 import { Play } from 'lucide-react';
+import { cleanText } from '../../utils/text';
 
 interface RoasteryStorySectionProps {
  title_ar?: string;
  title_en?: string;
  subtitle_ar?: string;
  subtitle_en?: string;
+ /** Already an embeddable URL — the API wrapper converts watch/short links. */
  video_url?: string;
+ /** CMS image for the story column; falls back to the stock roastery shot. */
+ image?: string;
  onNavigate: (path: string) => void;
 }
 
@@ -19,10 +23,16 @@ export const RoasteryStorySection: React.FC<RoasteryStorySectionProps> = ({
  subtitle_ar,
  subtitle_en,
  video_url,
+ image,
  onNavigate
 }) => {
  const { t } = useLanguage();
  const [isPlaying, setIsPlaying] = useState(false);
+ // An empty CMS video field used to arrive as `false` and fall through to a
+ // hardcoded placeholder clip. Only play something the CMS actually set.
+ const videoSrc = cleanText(video_url);
+ const poster = cleanText(image)
+   || 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80';
 
  return (
  <motion.section
@@ -38,11 +48,11 @@ export const RoasteryStorySection: React.FC<RoasteryStorySectionProps> = ({
  <div className="space-y-6">
  <AnimatedTitle
  badge={t('قصة سليكشن وحرفية التحميص', 'Our Roasting Craftsmanship')}
- title={title_ar ? t(title_ar, title_en || '') : t('نحن لا نحمص القهوة فحسب، بل نروي قصة الأرض والمزارع', 'We Don\'t Just Roast Coffee, We Tell The Story of Origin')}
+ title={cleanText(title_ar) ? t(cleanText(title_ar), cleanText(title_en)) : t('نحن لا نحمص القهوة فحسب، بل نروي قصة الأرض والمزارع', 'We Don\'t Just Roast Coffee, We Tell The Story of Origin')}
  />
 
  <p className="text-sm sm:text-base text-[#4A6869] leading-relaxed">
- {subtitle_ar ? t(subtitle_ar, subtitle_en || '') : t(
+ {cleanText(subtitle_ar) ? t(cleanText(subtitle_ar), cleanText(subtitle_en)) : t(
  'في محمصة سليكشن القهوة، ننقب عن أفضل 1% من محاصيل القهوة المختصة عالمياً من مزارع إثيوبيا وكولومبيا والسلفادور وجبال الخولان بجازان. نطبق أعلى درجات العناية في ملف التحميص لإبراز سحر النكهات الطبيعية بدون إضافات.',
  'At Selection Coffee, we meticulously source the top 1% specialty micro-lots directly from ethical family farms in Ethiopia, Colombia, El Salvador, and Jazan mountains. Every profile is roasted to unveil pure origin terroir.'
  )}
@@ -84,21 +94,24 @@ export const RoasteryStorySection: React.FC<RoasteryStorySectionProps> = ({
  transition={{ duration: 0.6 }}
  className="relative rounded-3xl overflow-hidden border border-[#E8F2F2] shadow-2xl aspect-video bg-[#F0FAFA] group"
  >
- {isPlaying ? (
+ {isPlaying && videoSrc ? (
  <iframe
- src={video_url || 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1'}
+ src={`${videoSrc}${videoSrc.includes('?') ? '&' : '?'}autoplay=1`}
  title="Selection Coffee Roasting"
  className="w-full h-full"
- allow="autoplay; encrypted-media"
+ allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
  allowFullScreen
  />
  ) : (
  <>
  <img
- src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80"
- alt="Roastery Video Poster"
+ src={poster}
+ alt="Roastery"
+ loading="lazy"
+ decoding="async"
  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
  />
+ {videoSrc && (
  <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex items-center justify-center">
  <button
  onClick={() => setIsPlaying(true)}
@@ -108,6 +121,7 @@ export const RoasteryStorySection: React.FC<RoasteryStorySectionProps> = ({
  <Play className="w-8 h-8 fill-current ml-1" />
  </button>
  </div>
+ )}
  </>
  )}
  </motion.div>

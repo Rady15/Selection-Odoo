@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useLanguage } from '../../context/LanguageContext';
 import AnimatedTitle from '../common/AnimatedTitle';
 import { ArrowLeft, ArrowRight, Coffee, Compass } from 'lucide-react';
+import { cleanText } from '../../utils/text';
 
 interface CoffeeFinderCalloutProps {
  onNavigate: (path: string) => void;
@@ -35,8 +36,8 @@ export const CoffeeFinderCallout: React.FC<CoffeeFinderCalloutProps> = ({
  <div className="space-y-4 max-w-2xl text-center md:text-start z-10">
  <AnimatedTitle
  badge={t('مستشار القهوة التفاعلي', 'Interactive Coffee Selector')}
- title={title_ar ? t(title_ar, title_en || '') : t('محتار في اختيار محصولك المناسب؟', 'Not sure which crop fits your taste?')}
- subtitle={subtitle_ar ? t(subtitle_ar, subtitle_en || '') : t('استخدم أداة مستشار القهوة الذكي لمساعدتك في اختيار المحصول المثالي بناءً على طريقة تحضيرك المفضلة وإيحاءات ذوقك في 30 ثانية.', 'Take our 30-second Coffee Quiz to get personalized crop recommendations matching your brew method and flavor preferences.')}
+ title={cleanText(title_ar) ? t(cleanText(title_ar), cleanText(title_en)) : t('محتار في اختيار محصولك المناسب؟', 'Not sure which crop fits your taste?')}
+ subtitle={cleanText(subtitle_ar) ? t(cleanText(subtitle_ar), cleanText(subtitle_en)) : t('استخدم أداة مستشار القهوة الذكي لمساعدتك في اختيار المحصول المثالي بناءً على طريقة تحضيرك المفضلة وإيحاءات ذوقك في 30 ثانية.', 'Take our 30-second Coffee Quiz to get personalized crop recommendations matching your brew method and flavor preferences.')}
  />
 
  <motion.div

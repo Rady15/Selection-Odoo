@@ -14,11 +14,17 @@ export const AnimatedTitle: React.FC<AnimatedTitleProps> = ({
  className = '',
  badge
 }) => {
- const words = title.split(' ');
+ // Callers pass CMS values straight through; `title.split` used to throw on an
+ // undefined title and `{subtitle && …}` rendered the literal string "false"
+ // that Odoo sends for a blank field.
+ const safeTitle = typeof title === 'string' ? title.trim() : '';
+ const safeSubtitle = typeof subtitle === 'string' ? subtitle.trim() : '';
+ const safeBadge = typeof badge === 'string' ? badge.trim() : '';
+ const words = (safeTitle || '').split(' ').filter(Boolean);
 
  return (
  <div className={`space-y-1.5 ${className}`}>
- {badge && (
+ {safeBadge && (
  <motion.div
  initial={{ opacity: 0, scale: 0.8, y: 10 }}
  whileInView={{ opacity: 1, scale: 1, y: 0 }}
@@ -27,11 +33,12 @@ export const AnimatedTitle: React.FC<AnimatedTitleProps> = ({
  className="inline-block"
  >
  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold bg-[#0E5257]/30 border border-[#6CC6C9]/40 text-[#6CC6C9]">
- {badge}
+ {safeBadge}
  </span>
  </motion.div>
  )}
 
+ {words.length > 0 && (
  <motion.h2
  initial="hidden"
  whileInView="visible"
@@ -76,8 +83,9 @@ export const AnimatedTitle: React.FC<AnimatedTitleProps> = ({
  </motion.span>
  ))}
  </motion.h2>
+ )}
 
- {subtitle && (
+ {safeSubtitle && (
  <motion.p
  initial={{ opacity: 0, y: 12 }}
  whileInView={{ opacity: 1, y: 0 }}
@@ -85,7 +93,7 @@ export const AnimatedTitle: React.FC<AnimatedTitleProps> = ({
  transition={{ duration: 0.5, delay: 0.4 }}
  className="text-xs sm:text-sm text-[#6B8C8E]"
  >
- {subtitle}
+ {safeSubtitle}
  </motion.p>
  )}
  </div>

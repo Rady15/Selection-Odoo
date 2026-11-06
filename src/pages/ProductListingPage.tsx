@@ -182,8 +182,17 @@ export const ProductListingPage: React.FC<ProductListingPageProps> = ({
       if (!slug) continue;
       counts.set(slug, (counts.get(slug) || 0) + 1);
     }
+    // `/api/categories` ships its own per-category product list. Use it only
+    // for categories the product page never covered, so the tab count and the
+    // result count below can never disagree.
+    for (const cat of categories as any[]) {
+      const slug = cat?.slug;
+      if (!slug || counts.has(slug)) continue;
+      const apiCount = Number(cat?.product_count ?? (Array.isArray(cat?.products) ? cat.products.length : 0));
+      if (apiCount > 0) counts.set(slug, apiCount);
+    }
     return counts;
-  }, [products]);
+  }, [products, categories]);
 
   const originOptions = useMemo(
     () => [...new Set(products.map((p: any) => (language === 'ar' ? p.origin_country_ar : p.origin_country_en)).filter(Boolean))] as string[],

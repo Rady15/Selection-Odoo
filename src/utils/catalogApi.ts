@@ -79,8 +79,23 @@ function dedupe(list: any[]): any[] {
   return [...seen.values()];
 }
 
-/** Fetch the public category tree, flattened. */
-export async function fetchCategories(): Promise<any[]> {
-  const payload = await fetch('/api/categories').then((r) => r.json());
-  return asArray(payload);
+/** Fetch the public category tree, flattened.
+ *
+ *  `GET /api/categories` now embeds every category's products (~600 KB), so the
+ *  result is memoised: the homepage carousel and the listing page both need it
+ *  and would otherwise download it twice. `force` bypasses the cache.
+ */
+let categoryCache: Promise<any[]> | null = null;
+
+export async function fetchCategories(force = false): Promise<any[]> {
+  if (!force && categoryCache) return categoryCache;
+  const request = fetch('/api/categories')
+    .then((r) => r.json())
+    .then(asArray)
+    .catch((err) => {
+      categoryCache = null; // let the next caller retry
+      throw err;
+    });
+  categoryCache = request;
+  return request;
 }

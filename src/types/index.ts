@@ -298,8 +298,12 @@ export interface HeroSlide {
   // Slide background fallback (e.g. linked product photo) used when the CMS
   // image is missing or a tiny placeholder.
   fallback_image?: string;
-  // Optional local banner override: /hero-banners/<slide-id>.png|jpg in public/
-  local_image?: string;
+  // Ordered fallback chain built by the API wrapper: CMS image, then the
+  // linked product/category photo, then a stock default.
+  sources?: string[];
+  // Where the slide itself points (same as cta_link when the CMS sets a CTA,
+  // otherwise the product/category attached to the block).
+  link_url?: string;
  badge_ar?: string;
  badge_en?: string;
  background_overlay?: string;
@@ -307,11 +311,14 @@ export interface HeroSlide {
 
 export interface HomepageSection {
  id: string;
- type: 'hero_slider' | 'featured_categories' | 'product_carousel' | 'values_carousel' | 'coffee_quiz' | 'roastery_story' | 'banner' | 'benefits' | 'testimonials' | 'newsletter';
+ type: 'hero_slider' | 'featured_categories' | 'product_carousel' | 'values_carousel' | 'coffee_quiz' | 'roastery_story' | 'video' | 'banner' | 'benefits' | 'testimonials' | 'newsletter';
  title_ar?: string;
  title_en?: string;
  subtitle_ar?: string;
  subtitle_en?: string;
+ cta_label?: string;
+ cta_link?: string;
+ image?: string;
  is_enabled: boolean;
  sort_order: number;
  config: any;
